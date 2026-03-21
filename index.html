@@ -9,15 +9,14 @@ function tryId(i) {
         credentials: 'include'
     })
     .then(res => {
-        console.log(i, res);
+        console.log("response:", res);
     })
     .catch(err => {
-        console.log("error", i);
+        console.log("error:", err);
     });
 }
 
-tryId(1382);
+tryId(1365);
 </script>
-
 </body>
 </html>
