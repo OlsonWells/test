@@ -17,7 +17,8 @@
         };
         iframe.src = TARGET + i;
         document.body.appendChild(iframe);
-        
+
+        const doc = iframe.contentDocument;
         const text = doc.body.textContent.trim();
 
         if (!text.includes("not authorized")) {
