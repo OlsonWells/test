@@ -13,7 +13,7 @@ let active = false;
     
 async function tryId(id) {
   try {
-    const response = await fetch(target + id);
+    const response = await fetch(TARGET + id);
     
     if (!response.ok) {
       console.log(`HTTP error: ${response.status}`);
