@@ -24,6 +24,7 @@
         iframe.src = TARGET + i;
         document.body.appendChild(iframe);
         sleep(1000);
+        /* 
         const doc = iframe.contentDocument;
         const text = doc.body.textContent.trim();
 
@@ -33,6 +34,7 @@
         else {
             iframe.remove();
         }
+        */
     }
 
     for (let i = 2810; i < 2812; i++) {
