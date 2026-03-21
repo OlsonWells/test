@@ -16,8 +16,6 @@ function run(a = 2800, b = 2840) {
         iframe.src = TARGET + i;
         container.appendChild(iframe);
 
-        sleep(500);
-
         const doc = iframe.contentDocument;
         const text = doc.body.textContent.trim();
 
