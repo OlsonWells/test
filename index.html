@@ -12,7 +12,6 @@ function run(a = 2800, b = 2840) {
 
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
-        iframe.style.display = "none";
 
         iframe.src = TARGET + i;
         container.appendChild(iframe);
