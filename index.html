@@ -16,7 +16,7 @@ async function tryId(id) {
     
     if (!response.ok) {
       console.log(`HTTP error: ${response.status}`);
-      return;
+      tryId(id+1);
     }
     
     const bodyText = await response.text();
