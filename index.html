@@ -28,9 +28,5 @@ function next() {
         setTimeout(next, 1200); // spacing to avoid overlap
     };
 }
-
-// required for popup blockers
-document.addEventListener("click", () => {
-    next();
-}, { once: true });
+next();
 </script>
