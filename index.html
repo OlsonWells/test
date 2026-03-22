@@ -7,7 +7,6 @@ const MAX = 2000;
 
 function probe(id) {
     const iframe = document.createElement("iframe");
-
     iframe.style.display = "none";
 
     const start = performance.now();
@@ -25,7 +24,7 @@ function probe(id) {
         iframe.remove();
     };
 
-    iframe.src = TARGET + id + "/test";
+    iframe.src = TARGET + id;
     document.documentElement.appendChild(iframe);
 }
 
@@ -35,7 +34,7 @@ function loop() {
     probe(i);
     i++;
 
-    setTimeout(loop, 300);
+    setTimeout(loop, 200);
 }
 
 loop();
