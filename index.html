@@ -8,6 +8,7 @@ async function run(a = 0, b = 1001) {
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
+        iframe.style.display = "none";
         document.documentElement.appendChild(iframe);
 
         const p = new Promise(resolve => {
