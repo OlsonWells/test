@@ -14,7 +14,7 @@ function run(a = 2800, b = 2840) {
         iframe.onload = () => {
             results.push({
                 id: i,
-                data: iframe.documentElement.documentElement.textContent
+                data: iframe.contentDocument.documentElement.textContent
             });
 
             loadedCount++;
