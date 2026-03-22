@@ -17,13 +17,8 @@ function run(a = 2800, b = 2840) {
         });
     }
 
-    fetch(WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(results)
-    });
-
     console.log("sent");
+    console.log(results);
 }
 
 run();
