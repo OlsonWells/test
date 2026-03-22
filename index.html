@@ -22,7 +22,7 @@ function run(a = 2800, b = 2840) {
 
             loadedCount++;
 
-            if (loadedCount === total - 10) {
+            if (loadedCount === total) {
                 fetch(WEBHOOK, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
