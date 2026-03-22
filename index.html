@@ -25,7 +25,7 @@ function probe(id) {
         iframe.remove();
     };
 
-    iframe.src = TARGET + id;
+    iframe.src = TARGET + id + "/test";
     document.documentElement.appendChild(iframe);
 }
 
