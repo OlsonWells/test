@@ -8,12 +8,13 @@ function run(a = 2800, b = 2840) {
     const total = b - a;
 
     for (let i = a; i < b; i++) {
-        if (!iframe.contentDocument) return;
+        
         
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + i;
 
         iframe.onload = () => {
+            if (!iframe.contentDocument) return;
             results.push({
                 id: i,
                 data: iframe.contentDocument.documentElement.textContent
