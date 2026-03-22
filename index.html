@@ -16,9 +16,7 @@ async function run(a = 0, b = 50) {
                 try {
                     iframeContents.push({
                         id: i,
-                        const content = iframe.contentDocument.body
-                                        ? iframe.contentDocument.body.textContent
-                                        : "";
+                        content: iframe.contentDocument.body ? iframe.contentDocument.body.textContent : "";
                     });
                 } catch (e) {
                     iframeContents.push({id: i, content: ""});
