@@ -19,9 +19,9 @@ window.onload = function () {
             document.body.appendChild(ex);
             window.removeEventListener("blur", () => { blurFired = true; });
             i++;
+            iframe.style.display = "none";
             testNext();
         }, 1000);
-        iframe.style.display = "none";
     }
     testNext();
 };
