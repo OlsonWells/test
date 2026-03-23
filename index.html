@@ -21,6 +21,6 @@ window.onload = function () {
         ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
         document.body.appendChild(ex);
         window.removeEventListener("blur", () => { blurFired = true; });
-    }, 100);
+    }, 1000);
 };
 </script>
