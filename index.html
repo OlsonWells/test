@@ -9,7 +9,7 @@ window.onload = function () {
         let blurFired = false;
         window.addEventListener("blur", () => { blurFired = true; });
         const iframe = document.createElement("iframe");
-        iframe.src = TARGET_BASE + i + "#search_note";
+        iframe.src = TARGET + i + "#search_note";
         document.body.appendChild(iframe);
         setTimeout(() => {
             const result = blurFired ? "hit" : "miss";
