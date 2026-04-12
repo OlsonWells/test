@@ -6,7 +6,7 @@ let id = parseInt(new URLSearchParams(window.location.search).get('id'), 10) || 
 function next() {
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + id + "#search_note";
-    document.body.appendChild(iframe);
+    document.documentElement.appendChild(iframe);
 
     let hit = false;
 
