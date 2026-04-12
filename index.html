@@ -10,6 +10,7 @@ window.onload = function () {
     iframe.src = TARGET + id + "#search_note";
     document.body.appendChild(iframe);
     setTimeout(() => {
+        console.log(blurFired);
         const result = blurFired ? "hit" : "miss";
         const ex = document.createElement("iframe");
         ex.style.display = "none";
